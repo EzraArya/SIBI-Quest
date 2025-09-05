@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sibi_quest/app/theme.dart';
+import 'package:sibi_quest/app/app_router.dart';
 
 /// Root application widget. Keep `main.dart` as a thin entry point
 /// and put your app wiring (theme, router, etc.) here.
@@ -19,12 +20,19 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    if (home != null) {
+      return MaterialApp(
+        title: title,
+        navigatorKey: navigatorKey,
+        theme: theme ?? buildDarkTheme(),
+        home: home,
+        debugShowCheckedModeBanner: false,
+      );
+    }
+    return MaterialApp.router(
       title: title,
-      navigatorKey: navigatorKey,
       theme: theme ?? buildDarkTheme(),
-      home: home,
-      // If you later add routing, replace `home` with `onGenerateRoute`/`routerConfig`.
+      routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
     );
   }
