@@ -34,9 +34,9 @@ class CustomTextField extends StatelessWidget {
       case TextFieldType.primary:
         return AppColors.textbox;
       case TextFieldType.secondary:
-        return AppColors.secondary.withOpacity(0.15);
+        return AppColors.secondary.withValues(alpha: 0.15);
       case TextFieldType.danger:
-        return AppColors.error.withOpacity(0.15);
+        return AppColors.error.withValues(alpha: 0.15);
       case TextFieldType.muted:
         return AppColors.muted;
     }
