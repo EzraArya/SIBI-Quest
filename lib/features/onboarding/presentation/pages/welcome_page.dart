@@ -55,6 +55,7 @@ class WelcomePage extends StatelessWidget {
                     type: ButtonType.secondary,
                     onPressed: () {
                       // TODO: navigate to onboarding flow
+                      context.go('/onboarding');
                     },
                   ),
                 ),
