@@ -31,5 +31,4 @@ const onboardingPages = [
     subtitle: 'Create your account and begin your quest today.',
     button: 'Get Started',
   ),
-  // ...other pages
 ];

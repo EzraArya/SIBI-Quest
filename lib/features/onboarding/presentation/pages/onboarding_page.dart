@@ -19,6 +19,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final List<OnboardingPageData> pages = onboardingPages;
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
@@ -103,7 +109,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       curve: Curves.easeInOut,
                     );
                   } else {
-                    // Use GoRouter to navigate to signup
                     context.go('/signup');
                   }
                 },
