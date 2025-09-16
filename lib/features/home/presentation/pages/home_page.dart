@@ -3,6 +3,7 @@ import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/banner.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/widgets/level_button.dart';
+import 'package:sibi_quest/features/home/domain/models/level.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,10 +17,97 @@ class _HomePageState extends State<HomePage> {
     null,
   );
 
+  // Sample levels data - this will be replaced with actual data from repository/API
+  late final List<Level> levels;
+
+  @override
+  void initState() {
+    super.initState();
+    levels = _generateSampleLevels();
+  }
+
   @override
   void dispose() {
     activePopupNotifier.dispose();
     super.dispose();
+  }
+
+  List<Level> _generateSampleLevels() {
+    return [
+      const Level(
+        id: "level_1",
+        title: "Alphabet - 1",
+        description: "Basic Alphabet 1",
+        minScore: 80,
+        number: 1,
+        sectionId: "vcknEfQBteeOBs8B5IV1",
+        status: LevelStatus.completed,
+      ),
+      const Level(
+        id: "level_2",
+        title: "Alphabet - 2",
+        description: "Basic Alphabet 2",
+        minScore: 85,
+        number: 2,
+        sectionId: "vcknEfQBteeOBs8B5IV1",
+        status: LevelStatus.completed,
+      ),
+      const Level(
+        id: "level_3",
+        title: "Alphabet - 3",
+        description: "Basic Alphabet 3",
+        minScore: 90,
+        number: 3,
+        sectionId: "vcknEfQBteeOBs8B5IV1",
+        status: LevelStatus.available,
+      ),
+      const Level(
+        id: "level_4",
+        title: "Alphabet - 4",
+        description: "Basic Alphabet 4",
+        minScore: 100,
+        number: 4,
+        sectionId: "vcknEfQBteeOBs8B5IV1",
+        status: LevelStatus.locked,
+      ),
+      const Level(
+        id: "level_5",
+        title: "Alphabet - 5",
+        description: "Basic Alphabet 5",
+        minScore: 100,
+        number: 5,
+        sectionId: "vcknEfQBteeOBs8B5IV1",
+        status: LevelStatus.locked,
+      ),
+    ];
+  }
+
+  LevelButtonStyle _mapLevelStatusToButtonStyle(LevelStatus status) {
+    switch (status) {
+      case LevelStatus.completed:
+        return LevelButtonStyle.completed;
+      case LevelStatus.available:
+        return LevelButtonStyle.defaultStyle;
+      case LevelStatus.locked:
+        return LevelButtonStyle.locked;
+    }
+  }
+
+  void _onLevelTap(Level level) {
+    switch (level.status) {
+      case LevelStatus.available:
+        print("Starting ${level.title}");
+        // TODO: Navigate to level screen
+        break;
+      case LevelStatus.completed:
+        print("Replaying ${level.title}");
+        // TODO: Navigate to level screen or show replay options
+        break;
+      case LevelStatus.locked:
+        print("${level.title} is locked");
+        // TODO: Show unlock requirements
+        break;
+    }
   }
 
   @override
@@ -34,11 +122,19 @@ class _HomePageState extends State<HomePage> {
             children: [
               const Row(
                 children: [
-                  CustomText(text: "Welcome, ", type: CustomTextType.title, color: AppColors.text,),
-                  CustomText(text: "User", type: CustomTextType.title, color: AppColors.accent,)
+                  CustomText(
+                    text: "Welcome, ",
+                    type: CustomTextType.title,
+                    color: AppColors.text,
+                  ),
+                  CustomText(
+                    text: "User",
+                    type: CustomTextType.title,
+                    color: AppColors.accent,
+                  ),
                 ],
               ),
-              const SizedBox(height: 24,),
+              const SizedBox(height: 24),
               const AppBanner(section: "Section 1", title: "Alphabet"),
               const SizedBox(height: 24),
               const Text(
@@ -50,64 +146,26 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Level buttons in a vertical column
+              // Dynamic level buttons generated from levels array
               Column(
-                children: [
-                  LevelButton(
-                    level: "1",
-                    style: LevelButtonStyle.completed,
-                    title: "Level 1",
-                    subtitle: "Basic A-Z signs",
-                    activePopupNotifier: activePopupNotifier,
-                    action: () {
-                      print("Starting Level 1");
-                    },
-                  ),
-                  const SizedBox(height: 30),
-                  LevelButton(
-                    level: "2",
-                    style: LevelButtonStyle.completed,
-                    title: "Level 2",
-                    subtitle: "Common words",
-                    activePopupNotifier: activePopupNotifier,
-                    action: () {
-                      print("Starting Level 2");
-                    },
-                  ),
-                  const SizedBox(height: 30),
-                  LevelButton(
-                    level: "3",
-                    style: LevelButtonStyle.defaultStyle,
-                    title: "Level 3",
-                    subtitle: "Simple sentences",
-                    activePopupNotifier: activePopupNotifier,
-                    action: () {
-                      print("Starting Level 3");
-                    },
-                  ),
-                  const SizedBox(height: 30),
-                  LevelButton(
-                    level: "4",
-                    style: LevelButtonStyle.locked,
-                    title: "Level 4",
-                    subtitle: "Complex conversations",
-                    activePopupNotifier: activePopupNotifier,
-                    action: () {
-                      print("Starting Level 4");
-                    },
-                  ),
-                  const SizedBox(height: 30),
-                  LevelButton(
-                    level: "5",
-                    style: LevelButtonStyle.locked,
-                    title: "Level 5",
-                    subtitle: "Advanced expressions",
-                    activePopupNotifier: activePopupNotifier,
-                    action: () {
-                      print("Starting Level 5");
-                    },
-                  ),
-                ],
+                children: levels.asMap().entries.map((entry) {
+                  final level = entry.value;
+                  final isLastLevel = entry.key == levels.length - 1;
+
+                  return Column(
+                    children: [
+                      LevelButton(
+                        level: level.number.toString(),
+                        style: _mapLevelStatusToButtonStyle(level.status),
+                        title: level.title,
+                        subtitle: level.description,
+                        activePopupNotifier: activePopupNotifier,
+                        action: () => _onLevelTap(level),
+                      ),
+                      if (!isLastLevel) const SizedBox(height: 30),
+                    ],
+                  );
+                }).toList(),
               ),
             ],
           ),
