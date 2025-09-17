@@ -14,7 +14,6 @@ ThemeData buildDarkTheme() {
     fontFamily: AppFonts.inter,
   );
 
-  final scheme = base.colorScheme;
   return base.copyWith(
     scaffoldBackgroundColor: AppColors.background,
     textTheme: base.textTheme.apply(
