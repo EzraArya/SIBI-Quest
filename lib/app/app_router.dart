@@ -5,7 +5,7 @@ import 'package:sibi_quest/features/dashboard/dashboard_router.dart';
 
 // Central app router. Add feature routes here or via sub-routers in the future.
 final appRouter = GoRouter(
-  initialLocation: OnboardingRoutes.homePath,
+  initialLocation: OnboardingRoutes.welcomePath,
   routes: [
     ...OnboardingRoutes.routes(),
     ...AuthRoutes.routes(),
