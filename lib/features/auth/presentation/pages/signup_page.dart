@@ -38,12 +38,14 @@ class _SignupPageState extends State<SignupPage> {
     _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
   bool _validateCurrentPage() {
     bool isValid = true;
+    String errorMsg = "This field must not be empty";
     setState(() {
       // Clear previous errors before validating again
       _ageError = null;
@@ -56,29 +58,43 @@ class _SignupPageState extends State<SignupPage> {
       switch (_currentPage) {
         case 0:
           if (_ageController.text.trim().isEmpty) {
-            _ageError = 'Please enter your age';
+            _ageError = errorMsg;
             isValid = false;
+          } else {
+            int? age = int.tryParse(_ageController.text.trim());
+            if (age == null || age <= 0) {
+              _ageError = 'Please enter a valid age';
+              isValid = false;
+            }
           }
           break;
         case 1:
           if (_firstNameController.text.trim().isEmpty) {
-            _firstNameError = 'Please enter your first name';
+            _firstNameError = errorMsg;
             isValid = false;
           }
           if (_lastNameController.text.trim().isEmpty) {
-            _lastNameError = 'Please enter your last name';
+            _lastNameError = errorMsg;
             isValid = false;
           }
           break;
         case 2:
           if (_emailController.text.trim().isEmpty) {
-            _emailError = 'Please enter your email';
+            _emailError = errorMsg;
             isValid = false;
+          } else {
+            // Simple email regex pattern
+            final emailPattern = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
+            final regExp = RegExp(emailPattern);
+            if (!regExp.hasMatch(_emailController.text.trim())) {
+              _emailError = 'Please enter a valid email address';
+              isValid = false;
+            }
           }
           break;
         case 3:
           if (_passwordController.text.isEmpty) {
-            _passwordError = 'Please create a password';
+            _passwordError = errorMsg;
             isValid = false;
           }
           if (_confirmPasswordController.text.isEmpty) {
@@ -164,7 +180,7 @@ class _SignupPageState extends State<SignupPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CustomText(
-          text: 'What is your email address',
+          text: 'What is your email address?',
           type: CustomTextType.title,
           color: AppColors.text,
         ),
