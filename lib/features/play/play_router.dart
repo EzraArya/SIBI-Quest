@@ -15,13 +15,15 @@ class PlayRoutes {
     GoRoute(
       name: loadingName,
       path: loadingPath,
-      builder: (context, state) => const LoadingPage(),
+      builder: (context, state) {
+        final levelId = state.uri.queryParameters['levelId'];
+        return LoadingPage(levelId: levelId);
+      },
     ),
     GoRoute(
       name: playName,
       path: playPath,
       builder: (context, state) {
-        // Extract levelId from query parameters
         final levelId = state.uri.queryParameters['levelId'];
         return PlayPage(levelId: levelId);
       },
