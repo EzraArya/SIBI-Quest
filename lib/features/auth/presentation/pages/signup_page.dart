@@ -117,10 +117,6 @@ class _SignupPageState extends State<SignupPage> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Signup process completed!')),
-      );
     }
   }
 
