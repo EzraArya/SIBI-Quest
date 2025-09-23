@@ -32,7 +32,7 @@ class WelcomePage extends StatelessWidget {
                     label: 'Log In',
                     type: ButtonType.primary,
                     onPressed: () {
-                      context.go('/dashboard/home');
+                      context.go('/login');
                     },
                   ),
                 ),
@@ -54,7 +54,7 @@ class WelcomePage extends StatelessWidget {
                     label: 'Get Started',
                     type: ButtonType.secondary,
                     onPressed: () {
-                      // TODO: navigate to onboarding flow
+                      context.go('/onboarding');
                     },
                   ),
                 ),

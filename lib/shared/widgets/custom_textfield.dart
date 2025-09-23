@@ -14,6 +14,7 @@ class CustomTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final TextInputAction? textInputAction;
   final int? maxLines;
+  final String? errorText;
 
   const CustomTextField({
     super.key,
@@ -27,6 +28,7 @@ class CustomTextField extends StatelessWidget {
     this.onChanged,
     this.textInputAction,
     this.maxLines = 1,
+    this.errorText,
   });
 
   Color _bg() {
@@ -84,6 +86,7 @@ class CustomTextField extends StatelessWidget {
         suffixIcon: suffix,
         filled: true,
         fillColor: bg,
+        errorText: errorText,
         enabledBorder: _border(AppColors.line),
         focusedBorder: _border(AppColors.primary),
         errorBorder: _border(AppColors.error),
