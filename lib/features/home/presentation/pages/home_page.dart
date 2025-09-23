@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/banner.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/widgets/level_button.dart';
 import 'package:sibi_quest/features/home/domain/models/level.dart';
+import 'package:sibi_quest/features/play/play_router.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -41,7 +43,7 @@ class _HomePageState extends State<HomePage> {
         minScore: 80,
         number: 1,
         sectionId: "vcknEfQBteeOBs8B5IV1",
-        status: LevelStatus.completed,
+        status: LevelStatus.available,
       ),
       const Level(
         id: "level_2",
@@ -50,7 +52,7 @@ class _HomePageState extends State<HomePage> {
         minScore: 85,
         number: 2,
         sectionId: "vcknEfQBteeOBs8B5IV1",
-        status: LevelStatus.completed,
+        status: LevelStatus.locked,
       ),
       const Level(
         id: "level_3",
@@ -59,7 +61,7 @@ class _HomePageState extends State<HomePage> {
         minScore: 90,
         number: 3,
         sectionId: "vcknEfQBteeOBs8B5IV1",
-        status: LevelStatus.available,
+        status: LevelStatus.locked,
       ),
       const Level(
         id: "level_4",
@@ -96,16 +98,26 @@ class _HomePageState extends State<HomePage> {
   void _onLevelTap(Level level) {
     switch (level.status) {
       case LevelStatus.available:
-        print("Starting ${level.title}");
-        // TODO: Navigate to level screen
-        break;
       case LevelStatus.completed:
-        print("Replaying ${level.title}");
-        // TODO: Navigate to level screen or show replay options
+        context.pushNamed(
+          PlayRoutes.loadingName,
+          queryParameters: {'levelId': 'level_${level.number}'},
+        );
         break;
+
       case LevelStatus.locked:
-        print("${level.title} is locked");
-        // TODO: Show unlock requirements
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: CustomText(
+              text:
+                  "${level.title} is locked. Complete previous levels to unlock.",
+              type: CustomTextType.body,
+              color: Colors.white,
+            ),
+            backgroundColor: AppColors.accent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
         break;
     }
   }
