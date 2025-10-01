@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
+import 'package:go_router/go_router.dart';
+import 'package:sibi_quest/features/play/play_router.dart';
 
 class PlayTypeThreePage extends StatelessWidget {
   final String promptText;
@@ -72,7 +74,7 @@ class PlayTypeThreePage extends StatelessWidget {
           width: double.infinity,
           height: 48,
           child: ElevatedButton(
-            onPressed: _showCameraOptions,
+            onPressed: () => _showCameraOptions(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.secondary,
               foregroundColor: AppColors.text,
@@ -153,9 +155,10 @@ class PlayTypeThreePage extends StatelessWidget {
     );
   }
 
-  void _showCameraOptions() {
-    // TODO: Show bottom sheet with camera/gallery options
-    // For now, simulate image selection
-    onImageChanged('/path/to/sample/image.jpg');
+  Future<void> _showCameraOptions(BuildContext context) async {
+    final result = await context.pushNamed(PlayRoutes.cameraName);
+    if (result is String && result.isNotEmpty) {
+      onImageChanged(result);
+    }
   }
 }
