@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/features/play/domain/models/questions.dart';
+import 'package:sibi_quest/features/play/domain/services/yolo_service.dart';
 import 'package:sibi_quest/features/play/data/static_questions_service.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_one_page.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_two_page.dart';
@@ -18,6 +19,8 @@ class PlayPage extends StatefulWidget {
 }
 
 class _PlayPageState extends State<PlayPage> {
+  final YoloService _yoloService = YoloService();
+
   // Game state
   List<Question> questions = [];
   int currentQuestionIndex = 0;
@@ -36,11 +39,14 @@ class _PlayPageState extends State<PlayPage> {
   // Camera/gesture data for type three
   String? selectedImage;
   String? gestureLabel;
+  double? gestureConfidence;
+  bool isDetectingGesture = false;
 
   @override
   void initState() {
     super.initState();
     _loadGameData();
+    _initializeYolo();
   }
 
   void _loadGameData() {
@@ -58,6 +64,8 @@ class _PlayPageState extends State<PlayPage> {
     isVerified = false;
     selectedImage = null;
     gestureLabel = null;
+    gestureConfidence = null;
+    isDetectingGesture = false;
   }
 
   void _onAnswerSelected(int index) {
@@ -66,6 +74,76 @@ class _PlayPageState extends State<PlayPage> {
       isAnswerCorrect = null;
       isVerified = false;
     });
+  }
+
+  Future<void> _initializeYolo() async {
+    try {
+      await _yoloService.init();
+    } catch (error, stackTrace) {
+      debugPrint('YOLO initialization error: $error\n$stackTrace');
+    }
+  }
+
+  Future<void> _handleGestureImageChanged(String? imagePath) async {
+    if (!mounted) return;
+
+    setState(() {
+      selectedImage = imagePath;
+      gestureLabel = null;
+      gestureConfidence = null;
+      isDetectingGesture = imagePath != null;
+      selectedAnswerIndex = null;
+      isAnswerCorrect = null;
+      isVerified = false;
+    });
+
+    if (imagePath == null) {
+      return;
+    }
+
+    try {
+      final result = await _yoloService.predict(imagePath);
+      if (!mounted) return;
+
+      if (result.isFallback) {
+        setState(() {
+          gestureLabel = result.gestureLabel;
+          gestureConfidence = result.confidence;
+          selectedAnswerIndex = 0;
+          isDetectingGesture = false;
+        });
+        return;
+      }
+
+      final rawDetectedLabel = result.gestureLabel.trim();
+      final expectedLabel = (currentQuestion?.content.prompt ?? '').trim();
+
+      final detectedLabel = rawDetectedLabel.isEmpty
+          ? 'Unknown'
+          : rawDetectedLabel;
+
+      final matchesPrompt =
+          detectedLabel.isNotEmpty &&
+          expectedLabel.isNotEmpty &&
+          detectedLabel.toUpperCase() == expectedLabel.toUpperCase() &&
+          result.confidence >= 0.3;
+
+      setState(() {
+        gestureLabel = detectedLabel;
+        gestureConfidence = result.confidence;
+        selectedAnswerIndex = matchesPrompt ? 0 : null;
+        isDetectingGesture = false;
+      });
+    } catch (error, stackTrace) {
+      debugPrint('Gesture detection failed: $error\n$stackTrace');
+      if (!mounted) return;
+      setState(() {
+        gestureLabel = 'Detected Gesture';
+        gestureConfidence = null;
+        selectedAnswerIndex = 0;
+        isDetectingGesture = false;
+      });
+    }
   }
 
   void _handleAnswerButtonTap() {
@@ -285,19 +363,9 @@ class _PlayPageState extends State<PlayPage> {
           promptText: currentQuestion!.content.prompt,
           selectedImage: selectedImage,
           gestureLabel: gestureLabel,
-          onImageChanged: (image) {
-            setState(() {
-              selectedImage = image;
-              if (image != null) {
-                selectedAnswerIndex = 0; // Simulate gesture detection
-                gestureLabel =
-                    'Detected Gesture'; // TODO: Implement actual gesture detection
-              } else {
-                selectedAnswerIndex = null;
-                gestureLabel = null;
-              }
-            });
-          },
+          gestureConfidence: gestureConfidence,
+          isProcessing: isDetectingGesture,
+          onImageChanged: _handleGestureImageChanged,
         );
     }
   }
