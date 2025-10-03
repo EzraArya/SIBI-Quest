@@ -70,22 +70,12 @@ class LevelButton extends StatelessWidget {
     this.action,
   });
 
-  String get _effectiveSubtitle {
-    if (style == LevelButtonStyle.defaultStyle) {
-      return subtitle;
-    } else {
-      return style.popupSubtitle;
-    }
-  }
+  String get _effectiveSubtitle =>
+      style == LevelButtonStyle.defaultStyle ? subtitle : style.popupSubtitle;
 
   void _onTap() {
-    if (activePopupNotifier.value == level) {
-      // Close popup if it's already open
-      activePopupNotifier.value = null;
-    } else {
-      // Open this popup, closing any others
-      activePopupNotifier.value = level;
-    }
+    activePopupNotifier.value =
+        activePopupNotifier.value == level ? null : level;
   }
 
   ChatBubblePopupStyle _getChatBubbleStyle() {
@@ -103,17 +93,16 @@ class LevelButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<String?>(
       valueListenable: activePopupNotifier,
-      builder: (context, activePopup, child) {
+      builder: (context, activePopup, _) {
         final isPopupVisible = activePopup == level;
 
         return SizedBox(
-          width: 50,
-          height: 50,
+          width: double.infinity,
+          height: 60,
           child: Stack(
-            alignment: Alignment.center,
             clipBehavior: Clip.none,
+            alignment: Alignment.centerLeft,
             children: [
-              // Level Button
               GestureDetector(
                 onTap: _onTap,
                 child: Container(
@@ -130,35 +119,40 @@ class LevelButton extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: CustomText(
-                      text: level,
-                      type: CustomTextType.bodyBold,
-                      color: style.textColor,
-                    ),
+                  alignment: Alignment.center,
+                  child: CustomText(
+                    text: level,
+                    type: CustomTextType.bodyBold,
+                    color: style.textColor,
                   ),
                 ),
               ),
-
-              // Popup
+          
+              // Popup floats outside
               if (isPopupVisible)
                 Positioned(
-                  left: 75,
-                  child: AnimatedScale(
-                    scale: isPopupVisible ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 200),
+                  left: 70, // distance from circle
+                  child: Material(
+                    color: Colors.transparent, // needed for hit-test
                     child: AnimatedOpacity(
-                      opacity: isPopupVisible ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 200),
-                      child: ChatBubblePopup(
-                        title: title,
-                        subtitle: _effectiveSubtitle,
-                        buttonTitle: style.popupButtonTitle,
-                        style: _getChatBubbleStyle(),
-                        buttonAction: () {
-                          activePopupNotifier.value = null;
-                          action?.call();
-                        },
+                      opacity: isPopupVisible ? 1 : 0,
+                      duration: const Duration(milliseconds: 250),
+                      child: AnimatedSlide(
+                        offset:
+                            isPopupVisible ? Offset.zero : const Offset(-0.2, 0),
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutBack,
+                        child: ChatBubblePopup(
+                          title: title,
+                          subtitle: _effectiveSubtitle,
+                          buttonTitle: style.popupButtonTitle,
+                          style: _getChatBubbleStyle(),
+                          buttonAction: () {
+                            action?.call();
+                            Future.microtask(
+                                () => activePopupNotifier.value = null);
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -170,3 +164,4 @@ class LevelButton extends StatelessWidget {
     );
   }
 }
+
