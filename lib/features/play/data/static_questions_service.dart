@@ -44,10 +44,10 @@ class StaticQuestionsService {
           prompt: 'Hello',
           isPromptImage: false,
           answers: [
-            const Answer(value: 'hello_gesture.png', isImage: true),
-            const Answer(value: 'goodbye_gesture.png', isImage: true),
-            const Answer(value: 'thank_you_gesture.png', isImage: true),
-            const Answer(value: 'please_gesture.png', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
           ],
         ),
         correctAnswerIndex: 0, // hello_gesture.png is correct
@@ -98,10 +98,10 @@ class StaticQuestionsService {
           prompt: 'Please',
           isPromptImage: false,
           answers: [
-            const Answer(value: 'hello_gesture.png', isImage: true),
-            const Answer(value: 'goodbye_gesture.png', isImage: true),
-            const Answer(value: 'please_gesture.png', isImage: true),
-            const Answer(value: 'thank_you_gesture.png', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
           ],
         ),
         correctAnswerIndex: 2, // please_gesture.png is correct
@@ -151,10 +151,10 @@ class StaticQuestionsService {
           prompt: 'Thank You',
           isPromptImage: false,
           answers: [
-            const Answer(value: 'sorry_gesture.png', isImage: true),
-            const Answer(value: 'thank_you_gesture.png', isImage: true),
-            const Answer(value: 'excuse_me_gesture.png', isImage: true),
-            const Answer(value: 'you_welcome_gesture.png', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
           ],
         ),
         correctAnswerIndex: 1, // thank_you_gesture.png is correct
@@ -204,10 +204,10 @@ class StaticQuestionsService {
           prompt: 'Goodbye',
           isPromptImage: false,
           answers: [
-            const Answer(value: 'hello_gesture.png', isImage: true),
-            const Answer(value: 'see_you_later_gesture.png', isImage: true),
-            const Answer(value: 'goodbye_gesture.png', isImage: true),
-            const Answer(value: 'nice_to_meet_you_gesture.png', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
           ],
         ),
         correctAnswerIndex: 2, // goodbye_gesture.png is correct
@@ -243,10 +243,10 @@ class StaticQuestionsService {
           prompt: 'Hello',
           isPromptImage: false,
           answers: [
-            const Answer(value: 'hello_gesture.png', isImage: true),
-            const Answer(value: 'goodbye_gesture.png', isImage: true),
-            const Answer(value: 'thank_you_gesture.png', isImage: true),
-            const Answer(value: 'please_gesture.png', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
+            const Answer(value: 'hand.point.right', isImage: true),
           ],
         ),
         correctAnswerIndex: 0, // hello_gesture.png is correct
