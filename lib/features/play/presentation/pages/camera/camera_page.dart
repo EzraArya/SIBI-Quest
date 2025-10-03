@@ -41,12 +41,12 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Handle hot reload / app switching to keep camera stable
-    if (_controller == null || _selectedCamera == null) return;
+    if (_selectedCamera == null) return;
     if (state == AppLifecycleState.inactive) {
-      _controller?.dispose();
+      unawaited(_disposeController());
     } else if (state == AppLifecycleState.resumed &&
         _permState == _PermissionStatusState.granted) {
-      _initializeCamera(_selectedCamera!);
+      unawaited(_initializeCamera(_selectedCamera!));
     }
   }
 
@@ -56,7 +56,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
     if (status.isGranted) {
       setState(() => _permState = _PermissionStatusState.granted);
-      _prepareCamera();
+      await _prepareCamera();
       return;
     }
 
@@ -64,7 +64,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       final req = await Permission.camera.request();
       if (req.isGranted) {
         setState(() => _permState = _PermissionStatusState.granted);
-        _prepareCamera();
+        await _prepareCamera();
       } else if (req.isPermanentlyDenied) {
         setState(() => _permState = _PermissionStatusState.permanentlyDenied);
       } else {
@@ -95,29 +95,48 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
         orElse: () => cameras.first,
       );
       _selectedCamera = back;
-      _initializeCamera(back);
+      await _initializeCamera(back);
     } catch (e) {
       setState(() => _errorMessage = 'Failed to enumerate cameras: $e');
     }
   }
 
-  void _initializeCamera(CameraDescription description) {
-    _controller?.dispose();
-    _controller = CameraController(
+  Future<void> _disposeController() async {
+    final controller = _controller;
+    _controller = null;
+    _initFuture = null;
+    if (mounted) {
+      setState(() {});
+    }
+    await controller?.dispose();
+  }
+
+  Future<void> _initializeCamera(CameraDescription description) async {
+    await _disposeController();
+    if (!mounted) return;
+    final controller = CameraController(
       description,
       ResolutionPreset.medium,
       enableAudio: false,
     );
-    _initFuture = _controller!
+    final initFuture = controller
         .initialize()
         .then((_) {
           if (!mounted) return;
           setState(() {});
         })
         .catchError((e) {
+          if (!mounted) return;
           setState(() => _errorMessage = 'Camera init error: $e');
         });
-    setState(() {});
+
+    if (mounted) {
+      setState(() {
+        _controller = controller;
+        _initFuture = initFuture;
+        _errorMessage = null;
+      });
+    }
   }
 
   Future<void> _capture() async {
@@ -310,7 +329,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _controller?.dispose();
+    unawaited(_disposeController());
     super.dispose();
   }
 }
