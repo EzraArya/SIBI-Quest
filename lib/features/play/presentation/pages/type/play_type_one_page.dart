@@ -5,13 +5,15 @@ import 'package:sibi_quest/shared/tokens/colors.dart';
 class PlayTypeOnePage extends StatelessWidget {
   final String promptImage;
   final List<String> answerOptions;
-  final Function(int) onAnswerSelected;
+  final ValueChanged<int> onAnswerSelected;
+  final int? selectedIndex;
 
   const PlayTypeOnePage({
     super.key,
     required this.promptImage,
     required this.answerOptions,
     required this.onAnswerSelected,
+    this.selectedIndex,
   });
 
   @override
@@ -85,19 +87,25 @@ class PlayTypeOnePage extends StatelessWidget {
       ),
       itemCount: answerOptions.length,
       itemBuilder: (context, index) {
+        final bool isSelected = selectedIndex == index;
         return GestureDetector(
           onTap: () => onAnswerSelected(index),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
             decoration: BoxDecoration(
-              color: AppColors.background,
-              border: Border.all(color: AppColors.line, width: 2),
+              color: isSelected ? AppColors.primary : AppColors.background,
+              border: Border.all(
+                color: isSelected ? AppColors.primary : AppColors.line,
+                width: 2,
+              ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
               child: CustomText(
                 text: answerOptions[index],
                 type: CustomTextType.title,
-                color: AppColors.text,
+                color: isSelected ? Colors.white : AppColors.text,
               ),
             ),
           ),
