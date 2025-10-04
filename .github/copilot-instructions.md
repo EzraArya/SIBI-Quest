@@ -1,35 +1,47 @@
 # SIBI-Quest – AI Coding Playbook
 
-## Project snapshot
-- Flutter 3.8 app organised per feature; entrypoint `lib/main.dart` bootstraps `App` (`MaterialApp.router`) with a dark theme from `app/theme.dart` and a central `GoRouter` in `app/app_router.dart`.
-- Design tokens live under `lib/shared/tokens/`; shared UI primitives are in `lib/shared/widgets/` and should be reused instead of raw Flutter widgets to match the visual language.
+## Architecture snapshot
+- Entry starts at `lib/main.dart`, which boots `App` (`lib/app/app.dart`) to wire the dark theme (`buildDarkTheme`) and top-level `GoRouter` from `app_router.dart`.
+- Feature code is split under `lib/features/<feature>/` into `data`, `domain`, and `presentation`; shared primitives live in `lib/shared/` and should be reused instead of raw Flutter widgets.
+- Tokens for typography, colour, and fonts are codified under `lib/shared/tokens/`; extend these when introducing new design language.
 
-## Navigation & feature layout
-- Each feature keeps its own router: e.g. `features/play/play_router.dart` wires `/loading`, `/play`, `/camera`, `/score`; onboarding/auth/dashboard follow the same pattern. Add new screens by extending the relevant router and exposing `$FeatureRoutes.routes()`.
-- `DashboardRoutes` uses a `ShellRoute` with `DashboardShell` to host the tab bar. Changing tabs should go through `context.go('/dashboard/...')` so the shell keeps state.
+## Navigation patterns
+- `appRouter` composes slices from each feature via static `routes()` helpers (e.g. `OnboardingRoutes`, `PlayRoutes`); when adding screens, extend the feature router then fan-in at the app router.
+- Dashboard navigation relies on `ShellRoute` + `DashboardShell`; emit paths like `/dashboard/<tab>` and switch tabs with `context.go` so the shell tracks `selectedIndex` correctly.
+- Cross-feature flows pass context via query parameters (`levelId`, `score`), so use `GoRouterState.uri.queryParameters` instead of globals when ingesting state.
 
-## UI conventions
-- Typography comes from `CustomText` and `AppText` styles (`CustomTextType` enum). Use these instead of manual `TextStyle`s.
-- Buttons: `ActionButton` (pre-styled filled button with `ButtonType` variants) and `ElevatedButton` only when the layout needs something custom (see play pages). Text inputs rely on `CustomTextField` and its `TextFieldType` palette.
-- Colours must come from `AppColors`; avoid hard-coded hex unless adding a new token.
+## UI system
+- Typography comes from `CustomText` + `CustomTextType`, which draw styles from `AppText`; don’t hand-roll `TextStyle`s.
+- Buttons follow `ActionButton` (`ButtonType` variants) and `CustomTextField` (`TextFieldType` backgrounds). Reach for raw `ElevatedButton` only when building complex layouts like `PlayPage`’s submit CTA.
+- Colours must come from `AppColors`; stay within the Material 3 dark palette to avoid light backgrounds fighting the theme.
 
-## Play flow specifics
-- `PlayPage` drives the multi-question game: it loads questions through `StaticQuestionsService`, tracks `currentQuestionIndex`, `score`, and swaps between `PlayTypeOne/Two/ThreePage` widgets based on `QuestionType`. When extending the game, respect `_resetQuestionState()` reset semantics and update the `StaticQuestionsService` helpers in sync.
-- Questions live in `features/play/domain/models/questions.dart` (`Question`, `QuestionContent`, `Answer`). Reuse the JSON helpers when introducing persistence or API-backed data.
+## Home & levels
+- `HomePage` seeds sample `Level` data and uses a shared `ValueNotifier` (`activePopupNotifier`) so only one `LevelButton` popover is open; preserve that notifier pattern when mutating UI.
+- `LevelButton` delegates visual state to `LevelButtonStyle` and calls the injected `action` before collapsing the popup—new behaviors should maintain this close-after-invoke flow.
+- Launching gameplay uses `context.pushNamed(PlayRoutes.loadingName, queryParameters: {'levelId': ...})`, triggering the loading-to-play handoff; keep this sequence so the loading spinner remains reusable.
 
-## Camera & gesture capture
-- `PlayTypeThreePage` expects `onImageChanged` to receive a file path returned by the `CameraPage` route (`context.pushNamed(PlayRoutes.cameraName)` returns a `String`). Keep that contract if you change either screen.
-- `CameraPage` handles runtime permissions via `permission_handler`, selects the back camera, and returns `Navigator.pop(context, picture.path)`. Maintain lifecycle hooks (`WidgetsBindingObserver`) or capturing will break after app resumes. Platform permissions are already declared (`android/app/src/main/AndroidManifest.xml`, `ios/Runner/Info.plist`).
+## Play flow
+- `PlayPage` is the single source of truth for game state (questions, selections, scoring, YOLO flags). Reset via `_resetQuestionState()` before showing a new question or updating answers.
+- Question data comes from `StaticQuestionsService`; when updating levels, modify its private helpers and keep `Question`/`QuestionContent` in sync with the enum-based `QuestionType`.
+- Rendering splits into `PlayTypeOne/Two/ThreePage` widgets with well-defined contracts: index callbacks for select flows, `onImageChanged(String?)` for gesture capture. Respect those signatures when composing new question types.
+- Score transitions call `context.go('/score?score=$score&levelId=$levelId')`; keep parameters percent-encoded if values can contain spaces.
+
+## Camera & gesture tooling
+- `PlayTypeThreePage` opens the camera via `context.pushNamed(PlayRoutes.cameraName)` and expects a file-system path on return. Validate the string before passing to `_handleGestureImageChanged`.
+- `CameraPage` wraps `camera` + `permission_handler`, preferring the back lens and cleaning up controllers through `WidgetsBindingObserver`; maintain those lifecycle hooks or hot reload/resume will crash the preview.
+- `YoloService` (singleton) loads `assets/models/sibi.tflite` + `labels.txt`, supports CPU/GPU delegates, and exposes `predict`/`predictAll`. Call `YoloService().init()` once, and dispose in tests with `YoloService().dispose()` to release interpreters.
 
 ## Data & assets
-- `assets/models/` contains `sibi.tflite` + `labels.txt` for future gesture recognition; the model is not yet wired up, so stubs (`Detected Gesture`, hard-coded confidence) appear in the UI. When integrating ML inference, surface results through the existing `gestureLabel`/`selectedImage` fields.
-- Sample levels (`features/home/domain/models/level.dart`) power the `HomePage` grid via a `ValueNotifier` that toggles `LevelButton` popovers. Preserve the notifier pattern so multiple buttons don’t open at once.
+- `features/play/domain/models/questions.dart` provides JSON helpers and enum parsing—reuse them when introducing persistence or networking.
+- Model assets sit under `assets/models/`; update both the `.tflite` and `labels.txt` together, and remember to bump `pubspec.yaml` asset entries if paths move.
+- Fonts (Inter family) already bundled in `assets/fonts/`; align new typography with `AppText.of(...)` rather than embedding font files ad-hoc.
 
-## Toolchain & workflows
-- Standard commands: `flutter pub get`, `flutter run -d <device>`, `flutter analyze`, `flutter test`. Widget tests currently fail because `test/widget_test.dart` still references the scaffolded `MyApp`; update or delete that test before relying on CI.
-- Camera usage requires physical hardware or an emulator with camera support; guard camera flows (`PlayTypeThreePage`) behind fallbacks when targeting web or desktop.
+## Developer workflows
+- Typical loop: `flutter pub get` → `flutter analyze` → targeted `flutter test test/<file>.dart`. Running all tests now fails because `test/widget_test.dart` still references the scaffolded `MyApp`; either rewrite it around `App(home: ...)` or quarantine it before CI.
+- Use `flutter run -d <deviceId>` for manual smoke tests; camera + YOLO flows require a device/emulator with camera access.
+- For integration-style checks, leverage `App`’s optional `home`/`navigatorKey` overrides to mount features without bringing up the full router.
 
-## Gotchas & tips
-- The theme assumes Material 3 dark mode; new screens should inherit `AppColors.background` and avoid `Scaffold` defaults that create light surfaces.
-- `App` accepts optional `home`, `title`, `theme`, and `navigatorKey` overrides, which is useful for testing or storybook scenarios—leverage this instead of building alternate `MaterialApp`s.
-- Lints are `flutter_lints` defaults (`analysis_options.yaml`); follow the package’s guidance and favour composable widgets over ad-hoc styling to keep the design system coherent.
+## Gotchas & helpers
+- `buildDarkTheme` fixes scaffold backgrounds and text colour—new `Scaffold`s should avoid default light surfaces or duplicate app bars.
+- When adding dashboard tabs, mirror the `/dashboard/<route>` naming so `DashboardShell` continues mapping URLs to indices.
+- Shared widgets under `lib/shared/widgets/` (e.g. `AppBanner`, `ChatBubblePopup`, `CustomLine`) encapsulate styling; extend them instead of rebuilding brand-specific chrome.
