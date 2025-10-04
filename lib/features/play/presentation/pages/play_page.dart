@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
@@ -8,6 +9,7 @@ import 'package:sibi_quest/features/play/data/static_questions_service.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_one_page.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_two_page.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_three_page.dart';
+import 'package:sibi_quest/shared/widgets/answer_feedback_section.dart';
 
 class PlayPage extends StatefulWidget {
   final String? levelId;
@@ -27,16 +29,30 @@ class _PlayPageState extends State<PlayPage> {
   Question? get currentQuestion =>
       questions.isNotEmpty ? questions[currentQuestionIndex] : null;
 
-  double get progressPercentage => questions.isNotEmpty
-      ? (currentQuestionIndex + 1) / questions.length
-      : 0.0;
+  double get progressValue {
+    if (questions.isEmpty) {
+      return 0.0;
+    }
+
+    final completed = currentQuestionIndex;
+    final clearedCurrent = isVerified && isAnswerCorrect == true ? 1 : 0;
+    final totalCompleted = (completed + clearedCurrent).clamp(
+      0,
+      questions.length,
+    );
+
+    return (totalCompleted / questions.length).clamp(0.0, 1.0);
+  }
+
+  double get progressPercentage => progressValue * 100;
 
   int? selectedAnswerIndex;
   bool? isAnswerCorrect;
   bool isVerified = false;
   int score = 0;
+  static const int _maxAttempts = 3;
+  int attemptsUsed = 0;
 
-  // Camera/gesture data for type three
   String? selectedImage;
   String? gestureLabel;
   double? gestureConfidence;
@@ -66,13 +82,21 @@ class _PlayPageState extends State<PlayPage> {
     gestureLabel = null;
     gestureConfidence = null;
     isDetectingGesture = false;
+    attemptsUsed = 0;
   }
 
   void _onAnswerSelected(int index) {
+    if (isVerified) {
+      HapticFeedback.mediumImpact();
+      return;
+    }
+
+    if (selectedAnswerIndex != index) {
+      HapticFeedback.selectionClick();
+    }
     setState(() {
       selectedAnswerIndex = index;
       isAnswerCorrect = null;
-      isVerified = false;
     });
   }
 
@@ -152,30 +176,69 @@ class _PlayPageState extends State<PlayPage> {
     if (!isVerified && selectedAnswerIndex != null) {
       // Verify answer
       final isCorrect = currentQuestion!.isCorrectAnswer(selectedAnswerIndex!);
+      final nextAttempts = attemptsUsed + 1;
       setState(() {
+        attemptsUsed = nextAttempts;
         isAnswerCorrect = isCorrect;
         isVerified = true;
         if (isCorrect) {
           score += 10; // Add points for correct answer
         }
       });
-    } else if (isVerified) {
-      // Move to next question or finish game
-      if (currentQuestionIndex < questions.length - 1) {
-        setState(() {
-          currentQuestionIndex++;
-          _resetQuestionState();
-        });
-      } else {
-        // Game finished, navigate to score page
-        _navigateToScore();
+      if (!isCorrect) {
+        final remaining = _maxAttempts - nextAttempts;
+        if (remaining > 0) {
+          HapticFeedback.mediumImpact();
+        } else {
+          HapticFeedback.heavyImpact();
+        }
       }
+    } else if (isVerified) {
+      if (isAnswerCorrect == true) {
+        _advanceToNextQuestion();
+      } else {
+        if (attemptsUsed >= _maxAttempts) {
+          _advanceToNextQuestion();
+        } else {
+          HapticFeedback.selectionClick();
+          setState(() {
+            isVerified = false;
+            isAnswerCorrect = null;
+            selectedAnswerIndex = null;
+          });
+        }
+      }
+    }
+  }
+
+  void _advanceToNextQuestion() {
+    if (currentQuestionIndex < questions.length - 1) {
+      setState(() {
+        currentQuestionIndex++;
+        _resetQuestionState();
+      });
+    } else {
+      _navigateToScore();
     }
   }
 
   void _navigateToScore() {
     // Navigate to score page with final score
     context.go('/score?score=$score&levelId=${widget.levelId ?? "default"}');
+  }
+
+  AnswerFeedbackState _resolveFeedbackState() {
+    if (selectedAnswerIndex == null) {
+      return AnswerFeedbackState.disabled;
+    }
+
+    if (!isVerified) {
+      return AnswerFeedbackState.idle;
+    }
+
+    return isAnswerCorrect == true
+        ? AnswerFeedbackState.correct
+        : AnswerFeedbackState.incorrect;
   }
 
   String _getButtonText() {
@@ -188,18 +251,26 @@ class _PlayPageState extends State<PlayPage> {
         return 'Finish Game';
       }
     } else {
-      return 'Try Again';
+      final remaining = _maxAttempts - attemptsUsed;
+      if (remaining > 0) {
+        return 'Try Again';
+      }
+      return currentQuestionIndex < questions.length - 1
+          ? 'Continue'
+          : 'Finish Game';
     }
   }
 
-  Color _getButtonColor() {
-    if (!isVerified) {
-      return AppColors.primary;
-    } else if (isAnswerCorrect == true) {
-      return AppColors.complementary;
-    } else {
-      return AppColors.error;
+  String? _getHelperText() {
+    if (isVerified && isAnswerCorrect != true) {
+      final remaining = _maxAttempts - attemptsUsed;
+      if (remaining > 0) {
+        final suffix = remaining == 1 ? '' : 's';
+        return '$remaining attempt$suffix remaining';
+      }
+      return 'No attempts remaining.';
     }
+    return null;
   }
 
   void _showSettings() {
@@ -271,26 +342,7 @@ class _PlayPageState extends State<PlayPage> {
                   // Progress bar with question counter
                   Expanded(
                     flex: 3,
-                    child: Column(
-                      children: [
-                        CustomText(
-                          text:
-                              '${currentQuestionIndex + 1}/${questions.length}',
-                          type: CustomTextType.body,
-                          color: AppColors.text,
-                        ),
-                        const SizedBox(height: 4),
-                        LinearProgressIndicator(
-                          value: progressPercentage,
-                          backgroundColor: AppColors.line,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.primary,
-                          ),
-                          minHeight: 8,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ],
-                    ),
+                    child: _AnimatedProgressBar(progress: progressValue),
                   ),
 
                   const Spacer(),
@@ -311,27 +363,11 @@ class _PlayPageState extends State<PlayPage> {
             // Answer button
             Padding(
               padding: const EdgeInsets.all(24),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: selectedAnswerIndex != null
-                      ? _handleAnswerButtonTap
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _getButtonColor(),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: CustomText(
-                    text: _getButtonText(),
-                    type: CustomTextType.bodyBold,
-                    color: Colors.white,
-                  ),
-                ),
+              child: AnswerFeedbackSection(
+                state: _resolveFeedbackState(),
+                buttonLabel: _getButtonText(),
+                helperText: _getHelperText(),
+                onPressed: _handleAnswerButtonTap,
               ),
             ),
           ],
@@ -349,6 +385,7 @@ class _PlayPageState extends State<PlayPage> {
               .map((a) => a.value)
               .toList(),
           onAnswerSelected: _onAnswerSelected,
+          selectedIndex: selectedAnswerIndex,
         );
       case QuestionType.selectGesture:
         return PlayTypeTwoPage(
@@ -357,6 +394,7 @@ class _PlayPageState extends State<PlayPage> {
               .map((a) => a.value)
               .toList(),
           onAnswerSelected: _onAnswerSelected,
+          selectedIndex: selectedAnswerIndex,
         );
       case QuestionType.performGesture:
         return PlayTypeThreePage(
@@ -368,5 +406,46 @@ class _PlayPageState extends State<PlayPage> {
           onImageChanged: _handleGestureImageChanged,
         );
     }
+  }
+}
+
+class _AnimatedProgressBar extends StatelessWidget {
+  const _AnimatedProgressBar({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final clampedProgress = progress.clamp(0.0, 1.0);
+        final targetWidth = constraints.maxWidth * clampedProgress;
+
+        return SizedBox(
+          height: 12,
+          child: Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              Container(
+                width: constraints.maxWidth,
+                decoration: BoxDecoration(
+                  color: AppColors.muted,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                width: targetWidth,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
