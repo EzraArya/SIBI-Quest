@@ -142,8 +142,9 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   Future<void> _capture() async {
     if (_controller == null ||
         !_controller!.value.isInitialized ||
-        _isCapturing)
+        _isCapturing) {
       return;
+    }
     setState(() => _isCapturing = true);
     try {
       final file = await _controller!.takePicture();

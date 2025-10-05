@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -436,11 +435,11 @@ class YoloService {
 
     // Assuming rawOutput is List<List<dynamic>> with shape [channels, proposals]
     final proposals = rawOutput.first.length as int;
-    final channels = rawOutput.length as int;
+    final channels = rawOutput.length;
     if (proposals == 0 || channels < 5) {
       return const <DetectionResult>[];
     }
-    
+
     final transposedOutput = List.generate(
       proposals,
       (i) => List.generate(channels, (j) => rawOutput[j][i] as double),
@@ -467,7 +466,7 @@ class YoloService {
       if (bestClassScore < _options.confidenceThreshold) {
         continue;
       }
-      
+
       // The highest class score is the confidence.
       final confidence = bestClassScore;
 
@@ -486,7 +485,7 @@ class YoloService {
         ),
       );
     }
-    
+
     if (candidates.isEmpty) {
       return const <DetectionResult>[];
     }
@@ -576,10 +575,10 @@ class YoloService {
     var width = widthInput / metadata.scaleX;
     var height = heightInput / metadata.scaleY;
 
-    left = left.clamp(0.0, metadata.originalWidth.toDouble()) as double;
-    top = top.clamp(0.0, metadata.originalHeight.toDouble()) as double;
-    width = width.clamp(0.0, metadata.originalWidth - left) as double;
-    height = height.clamp(0.0, metadata.originalHeight - top) as double;
+    left = left.clamp(0.0, metadata.originalWidth.toDouble());
+    top = top.clamp(0.0, metadata.originalHeight.toDouble());
+    width = width.clamp(0.0, metadata.originalWidth - left);
+    height = height.clamp(0.0, metadata.originalHeight - top);
 
     if (width <= 0 || height <= 0) {
       return null;
@@ -619,19 +618,6 @@ class YoloService {
     }
 
     return interArea / union;
-  }
-
-  List<double> _asDoubleList(dynamic source) {
-    if (source is List) {
-      return List<double>.generate(source.length, (index) {
-        final value = source[index];
-        if (value is num) {
-          return value.toDouble();
-        }
-        return 0.0;
-      }, growable: false);
-    }
-    return const <double>[];
   }
 
   List<dynamic>? _flattenBatch(dynamic tensor) {

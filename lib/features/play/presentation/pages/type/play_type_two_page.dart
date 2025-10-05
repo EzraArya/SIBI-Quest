@@ -5,13 +5,15 @@ import 'package:sibi_quest/shared/tokens/colors.dart';
 class PlayTypeTwoPage extends StatelessWidget {
   final String promptText;
   final List<String> answerOptions;
-  final Function(int) onAnswerSelected;
+  final ValueChanged<int> onAnswerSelected;
+  final int? selectedIndex;
 
   const PlayTypeTwoPage({
     super.key,
     required this.promptText,
     required this.answerOptions,
     required this.onAnswerSelected,
+    this.selectedIndex,
   });
 
   @override
@@ -75,12 +77,18 @@ class PlayTypeTwoPage extends StatelessWidget {
       ),
       itemCount: answerOptions.length,
       itemBuilder: (context, index) {
+        final bool isSelected = selectedIndex == index;
         return GestureDetector(
           onTap: () => onAnswerSelected(index),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
             decoration: BoxDecoration(
-              color: AppColors.background,
-              border: Border.all(color: AppColors.line, width: 2),
+              color: isSelected ? AppColors.primary : AppColors.background,
+              border: Border.all(
+                color: isSelected ? AppColors.primary : AppColors.line,
+                width: 2,
+              ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
@@ -92,12 +100,16 @@ class PlayTypeTwoPage extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.secondary,
+                      color: isSelected
+                          ? AppColors.complementary
+                          : AppColors.secondary,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(
                       Icons.gesture,
-                      color: AppColors.primary,
+                      color: isSelected
+                          ? AppColors.background
+                          : AppColors.primary,
                       size: 24,
                     ),
                   ),
@@ -105,7 +117,7 @@ class PlayTypeTwoPage extends StatelessWidget {
                   CustomText(
                     text: answerOptions[index],
                     type: CustomTextType.body,
-                    color: AppColors.text,
+                    color: isSelected ? Colors.white : AppColors.text,
                   ),
                 ],
               ),

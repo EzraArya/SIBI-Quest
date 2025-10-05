@@ -113,7 +113,7 @@ class PlayTypeThreePage extends StatelessWidget {
                   Image.file(File(selectedImage!), fit: BoxFit.cover),
                   if (isProcessing)
                     Container(
-                      color: AppColors.background.withOpacity(0.6),
+                      color: AppColors.background.withValues(alpha: 0.6),
                       child: const Center(child: CircularProgressIndicator()),
                     ),
                 ],
