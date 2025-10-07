@@ -65,7 +65,10 @@ class _LeaderboardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final topThree = players.length >= 3 ? players.sublist(0, 3) : players;
+    final hasPodium = players.length >= 3;
+    final podiumPlayers = hasPodium
+        ? players.sublist(0, 3)
+        : const <LeaderboardPlayer>[];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -78,18 +81,17 @@ class _LeaderboardContent extends StatelessWidget {
             color: AppColors.text,
           ),
           const SizedBox(height: 24),
-          if (topThree.length >= 3)
-            PodiumView(players: topThree)
-          else
-            const _LeaderboardEmptyPodium(),
-          const SizedBox(height: 32),
-          CustomText(
-            text: 'Runners-up',
-            type: CustomTextType.title,
-            color: AppColors.placeholder,
-          ),
-          const SizedBox(height: 16),
-          ...players.asMap().entries.skip(3).map((entry) {
+          if (hasPodium) ...[
+            PodiumView(players: podiumPlayers),
+            const SizedBox(height: 32),
+            CustomText(
+              text: 'Runners-up',
+              type: CustomTextType.title,
+              color: AppColors.placeholder,
+            ),
+            const SizedBox(height: 16),
+          ],
+          ...players.asMap().entries.map((entry) {
             final index = entry.key;
             final player = entry.value;
             return Padding(
@@ -156,7 +158,7 @@ class _LeaderboardContent extends StatelessWidget {
               ),
             );
           }),
-          if (players.length <= 3)
+          if (!hasPodium)
             Padding(
               padding: const EdgeInsets.only(top: 16),
               child: CustomText(
@@ -266,45 +268,6 @@ class _LeaderboardEmptyState extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _LeaderboardEmptyPodium extends StatelessWidget {
-  const _LeaderboardEmptyPodium();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 48),
-      decoration: BoxDecoration(
-        color: AppColors.textbox,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(
-            Icons.emoji_events_outlined,
-            color: AppColors.placeholder,
-            size: 40,
-          ),
-          SizedBox(height: 12),
-          CustomText(
-            text: 'No players yet',
-            type: CustomTextType.bodyBold,
-            color: AppColors.text,
-          ),
-          SizedBox(height: 8),
-          CustomText(
-            text: 'Be the first to claim the top spot!',
-            type: CustomTextType.body,
-            color: AppColors.placeholder,
-          ),
-        ],
       ),
     );
   }
