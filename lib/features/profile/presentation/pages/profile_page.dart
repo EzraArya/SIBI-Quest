@@ -5,7 +5,9 @@ import 'package:sibi_quest/features/profile/profile_router.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/action_button.dart';
 import 'package:sibi_quest/shared/widgets/app_alert.dart';
+import 'package:sibi_quest/shared/widgets/app_system_icon.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
+import 'package:sibi_quest/shared/widgets/image_text_box.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -225,20 +227,12 @@ class _ProfilePageState extends State<ProfilePage> {
             color: AppColors.text,
           ),
           const SizedBox(height: 16),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _overviewItems.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.0,
-            ),
-            itemBuilder: (context, index) {
-              final item = _overviewItems[index];
-              return _OverviewCard(item: item);
-            },
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: _overviewItems
+                .map((item) => _OverviewCard(item: item))
+                .toList(),
           ),
         ],
       ),
@@ -306,37 +300,28 @@ class _OverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.textbox,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.line.withValues(alpha: 0.5)),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(item.icon, color: AppColors.accent, size: 28),
-          const SizedBox(height: 12),
-          CustomText(
-            text: item.value,
-            type: CustomTextType.title,
-            color: AppColors.text,
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: CustomText(
-                text: item.label,
-                type: CustomTextType.body,
-                color: AppColors.placeholder,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-        ],
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 64, maxWidth: 168),
+      child: ImageTextBox(
+        icon: AppSystemIcon(
+          icon: item.icon,
+          width: 24,
+          height: 24,
+          color: AppColors.accent,
+        ),
+        title: item.value,
+        description: item.label,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        spacing: 12,
+        borderColor: AppColors.line.withValues(alpha: 0.5),
+        borderRadius: 16,
+        borderWidth: 1.5,
+        backgroundColor: AppColors.textbox,
+        titleColor: AppColors.text,
+        descriptionColor: AppColors.placeholder,
+        titleType: CustomTextType.bodyBold,
+        descriptionType: CustomTextType.body,
+        descriptionMaxLines: 3,
       ),
     );
   }
