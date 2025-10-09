@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sibi_quest/shared/tokens/typography.dart';
 
-enum CustomTextType {
-  body,
-  bodyBold,
-  title,
-  display,
-}
+enum CustomTextType { text, body, bodyBold, title, display }
 
 class CustomText extends StatelessWidget {
   final String text;
@@ -39,6 +34,8 @@ class CustomText extends StatelessWidget {
 
   TextStyle _mapTypeToStyle(CustomTextType type) {
     switch (type) {
+      case CustomTextType.text:
+        return AppText.text;
       case CustomTextType.body:
         return AppText.body;
       case CustomTextType.bodyBold:
