@@ -35,4 +35,5 @@ class AppText {
   static TextStyle get title => of(FontSizes.lg, weight: FontWeight.w600);
   static TextStyle get display =>
       of(FontSizes.display, weight: FontWeight.w700);
+  static TextStyle get text => of(FontSizes.xs);
 }
