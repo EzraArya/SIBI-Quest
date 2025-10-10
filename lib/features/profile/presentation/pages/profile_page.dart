@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sibi_quest/features/auth/auth_router.dart';
+import 'package:sibi_quest/features/auth/domain/auth_failure.dart';
+import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
 import 'package:sibi_quest/features/profile/profile_router.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/action_button.dart';
@@ -8,24 +11,35 @@ import 'package:sibi_quest/shared/widgets/app_alert.dart';
 import 'package:sibi_quest/shared/widgets/app_system_icon.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/widgets/image_text_box.dart';
+import 'package:sibi_quest/cores/models/user.dart' as core;
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isLoading = false;
   bool _showDeleteAlert = false;
 
-  final String _userName = 'Ayame Nakamura';
-  final String _userEmail = 'ayame.nakamura@example.com';
-  final String _joinDate = 'Joined Jan 2024';
-  final String? _profileImageUrl;
-
-  _ProfilePageState() : _profileImageUrl = null;
+  @override
+  void initState() {
+    super.initState();
+    ref.listen<AsyncValue<void>>(authControllerProvider, (previous, next) {
+      next.whenOrNull(
+        error: (error, _) {
+          final message = error is AuthFailure
+              ? error.message
+              : 'Authentication action failed. Please try again.';
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        },
+      );
+    });
+  }
 
   final List<_OverviewItem> _overviewItems = const [
     _OverviewItem(
@@ -59,7 +73,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _handleLogout() {
-    context.pushNamed(AuthRoutes.loginName);
+    ref.read(authControllerProvider.notifier).signOut();
   }
 
   void _handleDeleteAccount() {
@@ -84,6 +98,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final core.User? user = ref.watch(currentUserProvider);
+    final authState = ref.watch(authControllerProvider);
+    final bool isAuthProcessing = authState.isLoading;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -108,11 +126,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(context),
+                    _buildHeader(context, user),
                     const SizedBox(height: 24),
                     _buildOverviewSection(),
                     const SizedBox(height: 24),
-                    _buildActionsSection(),
+                    _buildActionsSection(isAuthProcessing),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -164,7 +182,26 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, core.User? user) {
+    final profileImageUrl = user?.image;
+    final displayName = (() {
+      if (user == null) {
+        return 'Explorer';
+      }
+      final name = user.fullName.trim();
+      return name.isEmpty ? 'Explorer' : name;
+    })();
+
+    final emailText = (user?.email ?? '').isEmpty
+        ? 'No email linked yet'
+        : user!.email;
+    final joinDateText = user?.createdAt != null
+        ? 'Joined ${_formatJoinDate(user!.createdAt!)}'
+        : null;
+    final subtitle = joinDateText != null
+        ? '$emailText • $joinDateText'
+        : emailText;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -178,9 +215,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 height: 200,
                 width: double.infinity,
                 color: AppColors.muted,
-                child: _profileImageUrl != null
+                child: profileImageUrl != null && profileImageUrl.isNotEmpty
                     ? Image.network(
-                        _profileImageUrl,
+                        profileImageUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
                             _fallbackHeaderImage(),
@@ -191,13 +228,13 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           const SizedBox(height: 24),
           CustomText(
-            text: _userName,
+            text: displayName,
             type: CustomTextType.title,
             color: AppColors.text,
           ),
           const SizedBox(height: 6),
           CustomText(
-            text: '$_userEmail • $_joinDate',
+            text: subtitle,
             type: CustomTextType.body,
             color: AppColors.placeholder,
           ),
@@ -239,7 +276,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildActionsSection() {
+  Widget _buildActionsSection(bool isAuthProcessing) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -251,6 +288,7 @@ class _ProfilePageState extends State<ProfilePage> {
               label: 'Logout',
               onPressed: _handleLogout,
               type: ButtonType.secondary,
+              isLoading: isAuthProcessing,
             ),
           ),
           const SizedBox(height: 16),
@@ -265,6 +303,27 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
     );
+  }
+
+  String _formatJoinDate(DateTime date) {
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final monthIndex = date.month - 1;
+    final monthName =
+        monthNames[(monthIndex < 0 || monthIndex > 11) ? 0 : monthIndex];
+    return '$monthName ${date.year}';
   }
 
   Widget _fallbackHeaderImage() {
