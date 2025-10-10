@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "680633038491",
+    "project_id": "sign-quest-3da19",
+    "storage_bucket": "sign-quest-3da19.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:680633038491:android:cffc1eea89d33bb2c1783e",
+        "android_client_info": {
+          "package_name": "com.example.sibi_quest"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAydAqWJ7rK2p_wZSDrB4XrXeY3Dk933Dw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
