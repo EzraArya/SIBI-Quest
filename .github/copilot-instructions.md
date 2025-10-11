@@ -4,6 +4,7 @@
 - `lib/main.dart` boots `App` (`lib/app/app.dart`), which builds the dark theme via `buildDarkTheme` and wires `appRouter` from `app_router.dart`.
 - Features live in `lib/features/<feature>/` with `data`, `domain`, and `presentation` subfolders; shared widgets/tokens sit in `lib/shared/`.
 - `buildDarkTheme` establishes a Material 3 dark palette—new `Scaffold`s should inherit it; override sparingly.
+- Firebase initializes before `runApp` and the widget tree is wrapped in `ProviderScope`; don’t bypass this when writing entrypoints or tests.
 
 ## Navigation & state
 - Routes fan in through `appRouter` by collecting each feature’s static `routes()` helper (see `features/play/play_router.dart`).
@@ -29,6 +30,14 @@
 ## Profile & shared patterns
 - Profile feature composes avatars with `ProfileAvatar` and uses shared spacing constants from `lib/shared/widgets/`; reuse tokens instead of hardcoding paddings.
 - `home` feature seeds level data and exposes a shared `activePopupNotifier` to ensure only one `LevelButton` popover is open—follow that notifier pattern for new popups.
+- `ProfilePage` reads the signed-in user via `currentUserProvider`; when augmenting profile data, extend the core `User` model + Firestore sync rather than hardcoding placeholders.
+
+## Firebase auth & routing
+- Firebase config lives in `lib/firebase_options.dart`; refresh it with `flutterfire configure` when environments change.
+- `features/auth/data/firebase_auth_repository.dart` wraps `FirebaseAuth` and surfaces failures through `AuthFailure`—use the repository instead of hitting the SDK directly.
+- Riverpod providers in `features/auth/presentation/providers/auth_providers.dart` expose `authStateProvider`, `currentUserProvider`, and `authController`; reuse them for UI work.
+- `LoginPage` and `SignupPage` already handle validation, loading, and error snackbars—tap into `authControllerProvider` when adding new auth surfaces.
+- `app_router.dart` redirects based on auth state; protected routes should live under `/dashboard` or `/play` prefixes so the guard remains effective.
 
 ## Developer workflow
 - Typical loop: `flutter pub get` → `flutter analyze` → targeted `flutter test test/<path>.dart`; widget coverage lives under `test/features/**`.
