@@ -2,11 +2,16 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:sibi_quest/cores/models/user.dart' as core;
 import 'package:sibi_quest/features/auth/domain/auth_failure.dart';
 import 'package:sibi_quest/features/auth/domain/auth_repository.dart';
+import 'package:sibi_quest/features/home/data/home_network_service.dart';
 
 class FirebaseAuthRepository implements AuthRepository {
-  FirebaseAuthRepository(this._firebaseAuth);
+  FirebaseAuthRepository(
+    this._firebaseAuth, {
+    required HomeNetworkService homeNetworkService,
+  }) : _homeNetworkService = homeNetworkService;
 
   final fb.FirebaseAuth _firebaseAuth;
+  final HomeNetworkService _homeNetworkService;
 
   @override
   Stream<core.User?> watchUser() {
@@ -50,6 +55,12 @@ class FirebaseAuthRepository implements AuthRepository {
         if (user.image != null && user.image!.isNotEmpty) {
           await firebaseUser.updatePhotoURL(user.image);
         }
+
+        // Seed default level progress so the Home dashboard has data on first load.
+        await _homeNetworkService.createUserLevelDataBatch(
+          userId: firebaseUser.uid,
+          levelDataItems: HomeNetworkService.buildInitialLevelDataSeed(),
+        );
       }
     } on fb.FirebaseAuthException catch (error) {
       throw _mapFirebaseException(error);

@@ -4,6 +4,7 @@ import 'package:sibi_quest/cores/models/user.dart' as core;
 import 'package:sibi_quest/features/auth/data/firebase_auth_repository.dart';
 import 'package:sibi_quest/features/auth/domain/auth_failure.dart';
 import 'package:sibi_quest/features/auth/domain/auth_repository.dart';
+import 'package:sibi_quest/features/home/presentation/providers/home_providers.dart';
 
 final firebaseAuthProvider = Provider<fb.FirebaseAuth>((ref) {
   return fb.FirebaseAuth.instance;
@@ -11,7 +12,11 @@ final firebaseAuthProvider = Provider<fb.FirebaseAuth>((ref) {
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final firebaseAuth = ref.watch(firebaseAuthProvider);
-  return FirebaseAuthRepository(firebaseAuth);
+  final homeNetworkService = ref.watch(homeNetworkServiceProvider);
+  return FirebaseAuthRepository(
+    firebaseAuth,
+    homeNetworkService: homeNetworkService,
+  );
 });
 
 final authStateProvider = StreamProvider<core.User?>((ref) {
