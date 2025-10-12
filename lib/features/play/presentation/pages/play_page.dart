@@ -60,9 +60,8 @@ class _PlayPageState extends ConsumerState<PlayPage> {
   int attemptsUsed = 0;
 
   String? selectedImage;
-  String? gestureLabel;
-  double? gestureConfidence;
   bool isDetectingGesture = false;
+  bool? _pendingGestureMatch;
 
   @override
   void initState() {
@@ -141,10 +140,9 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     isAnswerCorrect = null;
     isVerified = false;
     selectedImage = null;
-    gestureLabel = null;
-    gestureConfidence = null;
     isDetectingGesture = false;
     attemptsUsed = 0;
+    _pendingGestureMatch = null;
   }
 
   void _onAnswerSelected(int index) {
@@ -175,8 +173,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
 
     setState(() {
       selectedImage = imagePath;
-      gestureLabel = null;
-      gestureConfidence = null;
+      _pendingGestureMatch = null;
       isDetectingGesture = imagePath != null;
       selectedAnswerIndex = null;
       isAnswerCorrect = null;
@@ -193,11 +190,13 @@ class _PlayPageState extends ConsumerState<PlayPage> {
 
       if (result.isFallback) {
         setState(() {
-          gestureLabel = result.gestureLabel;
-          gestureConfidence = result.confidence;
-          selectedAnswerIndex = 0;
+          _pendingGestureMatch = null;
+          selectedAnswerIndex = null;
           isDetectingGesture = false;
         });
+        _showSnack(
+          'We couldn\'t detect the gesture clearly. Try retaking the photo.',
+        );
         return;
       }
 
@@ -215,20 +214,24 @@ class _PlayPageState extends ConsumerState<PlayPage> {
           result.confidence >= 0.3;
 
       setState(() {
-        gestureLabel = detectedLabel;
-        gestureConfidence = result.confidence;
-        selectedAnswerIndex = matchesPrompt ? 0 : null;
+        _pendingGestureMatch = matchesPrompt;
+        selectedAnswerIndex = 0;
         isDetectingGesture = false;
       });
+      if (!matchesPrompt) {
+        _showSnack('Gesture captured. Submit to check if it matches!');
+      }
     } catch (error, stackTrace) {
       debugPrint('Gesture detection failed: $error\n$stackTrace');
       if (!mounted) return;
       setState(() {
-        gestureLabel = 'Detected Gesture';
-        gestureConfidence = null;
-        selectedAnswerIndex = 0;
+        _pendingGestureMatch = null;
+        selectedAnswerIndex = null;
         isDetectingGesture = false;
       });
+      _showSnack(
+        'Something went wrong while analysing the gesture. Try again.',
+      );
     }
   }
 
@@ -237,7 +240,17 @@ class _PlayPageState extends ConsumerState<PlayPage> {
 
     if (!isVerified && selectedAnswerIndex != null) {
       // Verify answer
-      final isCorrect = currentQuestion!.isCorrectAnswer(selectedAnswerIndex!);
+      bool isCorrect;
+      if (currentQuestion!.type == QuestionType.performGesture) {
+        final detection = _pendingGestureMatch;
+        if (detection == null) {
+          _showSnack('Capture your gesture before submitting.');
+          return;
+        }
+        isCorrect = detection;
+      } else {
+        isCorrect = currentQuestion!.isCorrectAnswer(selectedAnswerIndex!);
+      }
       final nextAttempts = attemptsUsed + 1;
       setState(() {
         attemptsUsed = nextAttempts;
@@ -266,8 +279,16 @@ class _PlayPageState extends ConsumerState<PlayPage> {
           setState(() {
             isVerified = false;
             isAnswerCorrect = null;
-            selectedAnswerIndex = null;
+            if (currentQuestion!.type == QuestionType.performGesture) {
+              selectedAnswerIndex = null;
+              _pendingGestureMatch = null;
+            } else {
+              selectedAnswerIndex = null;
+            }
           });
+          if (currentQuestion!.type == QuestionType.performGesture) {
+            _showSnack('Gesture didn\'t match. Try retaking the photo.');
+          }
         }
       }
     }
@@ -497,12 +518,17 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         return PlayTypeThreePage(
           promptText: currentQuestion!.content.prompt,
           selectedImage: selectedImage,
-          gestureLabel: gestureLabel,
-          gestureConfidence: gestureConfidence,
           isProcessing: isDetectingGesture,
           onImageChanged: _handleGestureImageChanged,
         );
     }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

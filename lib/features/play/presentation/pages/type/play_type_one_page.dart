@@ -44,19 +44,33 @@ class PlayTypeOnePage extends StatelessWidget {
         Center(
           child: Column(
             children: [
-              // Prompt image placeholder
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.secondary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.gesture,
-                    size: 32,
-                    color: AppColors.primary,
+              // Prompt image fetched from remote URL
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 96,
+                  height: 96,
+                  color: AppColors.muted,
+                  child: Image.network(
+                    promptImage,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, _) => Icon(
+                      Icons.broken_image,
+                      color: AppColors.secondary,
+                      size: 36,
+                    ),
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) {
+                        return child;
+                      }
+                      return const Center(
+                        child: SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -102,10 +116,31 @@ class PlayTypeOnePage extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
-              child: CustomText(
-                text: answerOptions[index],
-                type: CustomTextType.title,
-                color: isSelected ? Colors.white : AppColors.text,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  color: AppColors.muted,
+                  child: Image.network(
+                    answerOptions[index],
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, _) => Icon(
+                      Icons.broken_image,
+                      color: isSelected ? Colors.white : AppColors.secondary,
+                    ),
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) {
+                        return child;
+                      }
+                      return const Center(
+                        child: SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
           ),

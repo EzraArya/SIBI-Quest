@@ -91,35 +91,30 @@ class PlayTypeTwoPage extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Image placeholder
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.complementary
-                          : AppColors.secondary,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      Icons.gesture,
-                      color: isSelected
-                          ? AppColors.background
-                          : AppColors.primary,
-                      size: 24,
-                    ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                color: AppColors.muted,
+                child: Image.network(
+                  answerOptions[index],
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, _) => Icon(
+                    Icons.broken_image,
+                    color: isSelected ? Colors.white : AppColors.secondary,
                   ),
-                  const SizedBox(height: 8),
-                  CustomText(
-                    text: answerOptions[index],
-                    type: CustomTextType.body,
-                    color: isSelected ? Colors.white : AppColors.text,
-                  ),
-                ],
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) {
+                      return child;
+                    }
+                    return const Center(
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),
