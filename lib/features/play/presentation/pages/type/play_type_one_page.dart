@@ -116,31 +116,10 @@ class PlayTypeOnePage extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  color: AppColors.muted,
-                  child: Image.network(
-                    answerOptions[index],
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, _) => Icon(
-                      Icons.broken_image,
-                      color: isSelected ? Colors.white : AppColors.secondary,
-                    ),
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) {
-                        return child;
-                      }
-                      return const Center(
-                        child: SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+              child: CustomText(
+                text: answerOptions[index],
+                type: CustomTextType.title,
+                color: isSelected ? Colors.white : AppColors.text,
               ),
             ),
           ),
