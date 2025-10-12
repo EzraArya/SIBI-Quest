@@ -1,56 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:sibi_quest/features/leaderboard/data/static_leaderboard_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sibi_quest/features/leaderboard/domain/models/leaderboard_player.dart';
+import 'package:sibi_quest/features/leaderboard/presentation/providers/leaderboard_providers.dart';
 import 'package:sibi_quest/features/leaderboard/presentation/widgets/podium_view.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/action_button.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
+import 'package:sibi_quest/shared/utils/image_url_validator.dart';
 
-class LeaderboardPage extends StatefulWidget {
+class LeaderboardPage extends ConsumerWidget {
   const LeaderboardPage({super.key});
 
   @override
-  State<LeaderboardPage> createState() => _LeaderboardPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final leaderboardAsync = ref.watch(leaderboardProvider);
 
-class _LeaderboardPageState extends State<LeaderboardPage> {
-  late Future<List<LeaderboardPlayer>> _leaderboardFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _leaderboardFuture = StaticLeaderboardService.fetchLeaderboard();
-  }
-
-  void _reload() {
-    setState(() {
-      _leaderboardFuture = StaticLeaderboardService.fetchLeaderboard();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: FutureBuilder<List<LeaderboardPlayer>>(
-          future: _leaderboardFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const _LeaderboardLoadingSkeleton();
-            }
-
-            if (snapshot.hasError) {
-              return _LeaderboardError(onRetry: _reload);
-            }
-
-            final players = snapshot.data ?? const <LeaderboardPlayer>[];
+        child: leaderboardAsync.when(
+          data: (players) {
             if (players.isEmpty) {
               return const _LeaderboardEmptyState();
             }
-
             return _LeaderboardContent(players: players);
           },
+          loading: () => const _LeaderboardLoadingSkeleton(),
+          error: (error, _) => _LeaderboardError(
+            onRetry: () => ref.invalidate(leaderboardProvider),
+          ),
         ),
       ),
     );
@@ -94,6 +72,7 @@ class _LeaderboardContent extends StatelessWidget {
           ...players.asMap().entries.map((entry) {
             final index = entry.key;
             final player = entry.value;
+            final hasValidAvatar = isValidNetworkImageUrl(player.imageUrl);
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Container(
@@ -141,17 +120,16 @@ class _LeaderboardContent extends StatelessWidget {
                     CircleAvatar(
                       radius: 20,
                       backgroundColor: AppColors.muted,
-                      backgroundImage:
-                          player.imageUrl != null && player.imageUrl!.isNotEmpty
+                      backgroundImage: hasValidAvatar
                           ? NetworkImage(player.imageUrl!)
                           : null,
-                      child: player.imageUrl == null || player.imageUrl!.isEmpty
-                          ? const Icon(
+                      child: hasValidAvatar
+                          ? null
+                          : const Icon(
                               Icons.person,
                               size: 20,
                               color: AppColors.placeholder,
-                            )
-                          : null,
+                            ),
                     ),
                   ],
                 ),
