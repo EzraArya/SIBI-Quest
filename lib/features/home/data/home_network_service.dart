@@ -13,14 +13,6 @@ class HomeNetworkService {
 
   final FirebaseFirestore _firestore;
 
-  /// Default progress payloads used when onboarding a brand-new user.
-  static List<({String levelId, UserLevelData data})>
-  buildInitialLevelDataSeed() {
-    return List<({String levelId, UserLevelData data})>.unmodifiable(
-      _defaultLevelDataSeed,
-    );
-  }
-
   /// Shortcut for the `users/{userId}/levelData` collection.
   CollectionReference<Map<String, dynamic>> _userLevelCollection(
     String userId,
@@ -60,50 +52,4 @@ class HomeNetworkService {
       return UserLevelData.fromJson(data);
     }).toList();
   }
-
-  /// Creates or updates a batch of level progress entries for the user.
-  ///
-  /// The [levelDataItems] record matches the Swift tuple signature from
-  /// `SQHomeNetworkService`, pairing a level ID with its persisted payload.
-  Future<void> createUserLevelDataBatch({
-    required String userId,
-    required List<({String levelId, UserLevelData data})> levelDataItems,
-  }) async {
-    if (levelDataItems.isEmpty) {
-      return;
-    }
-
-    final batch = _firestore.batch();
-    final collection = _userLevelCollection(userId);
-
-    for (final item in levelDataItems) {
-      final docRef = collection.doc(item.levelId);
-      final json = item.data.toJson();
-
-      // Firestore prefers Timestamp objects for date fields.
-      if (item.data.lastAttempted != null) {
-        json['lastAttempted'] = Timestamp.fromDate(item.data.lastAttempted!);
-      }
-
-      batch.set(docRef, json, SetOptions(merge: true));
-    }
-
-    await batch.commit();
-  }
-
-  static const List<({String levelId, UserLevelData data})>
-  _defaultLevelDataSeed = [
-    (
-      levelId: 'level_1',
-      data: UserLevelData(status: UserLevelStatus.available, bestScore: 0),
-    ),
-    (
-      levelId: 'level_2',
-      data: UserLevelData(status: UserLevelStatus.locked, bestScore: 0),
-    ),
-    (
-      levelId: 'level_3',
-      data: UserLevelData(status: UserLevelStatus.locked, bestScore: 0),
-    ),
-  ];
 }
