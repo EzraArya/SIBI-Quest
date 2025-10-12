@@ -1,21 +1,32 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sibi_quest/cores/models/user.dart' as core;
+import 'package:sibi_quest/features/auth/data/auth_network_service.dart';
 import 'package:sibi_quest/features/auth/data/firebase_auth_repository.dart';
-import 'package:sibi_quest/features/auth/domain/auth_failure.dart';
 import 'package:sibi_quest/features/auth/domain/auth_repository.dart';
-import 'package:sibi_quest/features/home/presentation/providers/home_providers.dart';
 
 final firebaseAuthProvider = Provider<fb.FirebaseAuth>((ref) {
   return fb.FirebaseAuth.instance;
 });
 
+final authFirestoreProvider = Provider<FirebaseFirestore>((ref) {
+  return FirebaseFirestore.instance;
+});
+
+final authNetworkServiceProvider = Provider<AuthNetworkService>((ref) {
+  final firestore = ref.watch(authFirestoreProvider);
+  return AuthNetworkService(firestore: firestore);
+});
+
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final firebaseAuth = ref.watch(firebaseAuthProvider);
-  final homeNetworkService = ref.watch(homeNetworkServiceProvider);
+  final authNetworkService = ref.watch(authNetworkServiceProvider);
   return FirebaseAuthRepository(
     firebaseAuth,
-    homeNetworkService: homeNetworkService,
+    authNetworkService: authNetworkService,
   );
 });
 
@@ -31,16 +42,15 @@ final currentUserProvider = Provider<core.User?>((ref) {
   );
 });
 
-final authControllerProvider =
-    StateNotifierProvider<AuthController, AsyncValue<void>>((ref) {
-      final repository = ref.watch(authRepositoryProvider);
-      return AuthController(repository);
-    });
+final authControllerProvider = AsyncNotifierProvider<AuthController, void>(
+  AuthController.new,
+);
 
-class AuthController extends StateNotifier<AsyncValue<void>> {
-  AuthController(this._repository) : super(const AsyncData(null));
+class AuthController extends AsyncNotifier<void> {
+  AuthRepository get _repository => ref.watch(authRepositoryProvider);
 
-  final AuthRepository _repository;
+  @override
+  FutureOr<void> build() {}
 
   Future<void> signIn({required String email, required String password}) {
     return _run(() => _repository.signIn(email: email, password: password));
@@ -60,13 +70,6 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
 
   Future<void> _run(Future<void> Function() action) async {
     state = const AsyncLoading();
-    try {
-      await action();
-      state = const AsyncData(null);
-    } on AuthFailure catch (failure) {
-      state = AsyncError(failure, StackTrace.current);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
+    state = await AsyncValue.guard(action);
   }
 }

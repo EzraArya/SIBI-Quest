@@ -38,11 +38,15 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   String? _emailError;
   String? _passwordError;
   String? _confirmPasswordError;
+  late final ProviderSubscription<AsyncValue<void>> _authListener;
 
   @override
   void initState() {
     super.initState();
-    ref.listen<AsyncValue<void>>(authControllerProvider, (previous, next) {
+    _authListener = ref.listenManual<AsyncValue<void>>(authControllerProvider, (
+      previous,
+      next,
+    ) {
       next.whenOrNull(
         error: (error, _) {
           final message = error is AuthFailure
@@ -64,6 +68,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
 
   @override
   void dispose() {
+    _authListener.close();
     _ageController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();

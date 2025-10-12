@@ -23,11 +23,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   String? _emailError;
   String? _passwordError;
+  late final ProviderSubscription<AsyncValue<void>> _authListener;
 
   @override
   void initState() {
     super.initState();
-    ref.listen<AsyncValue<void>>(authControllerProvider, (previous, next) {
+    _authListener = ref.listenManual<AsyncValue<void>>(authControllerProvider, (
+      previous,
+      next,
+    ) {
       next.whenOrNull(
         error: (error, _) {
           final message = error is AuthFailure
@@ -49,6 +53,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   void dispose() {
+    _authListener.close();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
