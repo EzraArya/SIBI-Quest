@@ -31,13 +31,26 @@
 - Profile feature composes avatars with `ProfileAvatar` and uses shared spacing constants from `lib/shared/widgets/`; reuse tokens instead of hardcoding paddings.
 - `home` feature seeds level data and exposes a shared `activePopupNotifier` to ensure only one `LevelButton` popover is open—follow that notifier pattern for new popups.
 - `ProfilePage` reads the signed-in user via `currentUserProvider`; when augmenting profile data, extend the core `User` model + Firestore sync rather than hardcoding placeholders.
+- `features/profile/data/profile_network_service.dart` handles Firestore writes, password updates, and Cloudinary uploads using `SecretManager` + `CloudinaryService`.
+- Providers in `features/profile/presentation/providers/profile_providers.dart` expose `profileControllerProvider`; invalidating it refreshes Cloudinary credentials and ensures controller state resets between flows.
+- Edit/change profile UIs (`edit_profile_page.dart`, `change_password_page.dart`, `edit_profile_picture_page.dart`) call the controller for mutations and rely on its loading/error state for feedback.
+
+## Leaderboard data
+- `features/leaderboard/data/leaderboard_network_service.dart` fetches top users from Firestore (`users` collection ordered by `totalScore`).
+- Riverpod wiring in `leaderboard_providers.dart` exposes `leaderboardProvider`; invalidate it to refresh the board.
+- `LeaderboardPage` is a `ConsumerWidget` that renders loading/error/empty states based on that provider.
 
 ## Firebase auth & routing
 - Firebase config lives in `lib/firebase_options.dart`; refresh it with `flutterfire configure` when environments change.
-- `features/auth/data/firebase_auth_repository.dart` wraps `FirebaseAuth` and surfaces failures through `AuthFailure`—use the repository instead of hitting the SDK directly.
+- `features/auth/data/firebase_auth_repository.dart` wraps `FirebaseAuth`, seeds a Firestore profile + initial level progress through `AuthNetworkService`, and surfaces failures via `AuthFailure`—use the repository instead of hitting the SDK directly.
+- `features/auth/data/auth_network_service.dart` handles Firestore writes for new accounts (`users/{uid}` doc plus `levelData` seed); only auth code should depend on it.
 - Riverpod providers in `features/auth/presentation/providers/auth_providers.dart` expose `authStateProvider`, `currentUserProvider`, and `authController`; reuse them for UI work.
 - `LoginPage` and `SignupPage` already handle validation, loading, and error snackbars—tap into `authControllerProvider` when adding new auth surfaces.
 - `app_router.dart` redirects based on auth state; protected routes should live under `/dashboard` or `/play` prefixes so the guard remains effective.
+
+## Riverpod upgrade notes
+- Project runs on Riverpod 3; listeners in `initState` must use `ref.listenManual` and close the returned subscription in `dispose` (see login/signup/profile pages for the pattern).
+- `AuthController` extends `AsyncNotifier<void>`; wrap async mutations with `_run` to keep loading/error state consistent.
 
 ## Developer workflow
 - Typical loop: `flutter pub get` → `flutter analyze` → targeted `flutter test test/<path>.dart`; widget coverage lives under `test/features/**`.
