@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sibi_quest/features/auth/auth_router.dart';
 import 'package:sibi_quest/features/auth/domain/auth_failure.dart';
 import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
+import 'package:sibi_quest/features/profile/presentation/providers/profile_providers.dart';
 import 'package:sibi_quest/features/profile/profile_router.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/action_button.dart';
@@ -12,6 +15,7 @@ import 'package:sibi_quest/shared/widgets/app_system_icon.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/widgets/image_text_box.dart';
 import 'package:sibi_quest/cores/models/user.dart' as core;
+import 'package:sibi_quest/shared/utils/image_url_validator.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -23,11 +27,16 @@ class ProfilePage extends ConsumerStatefulWidget {
 class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isLoading = false;
   bool _showDeleteAlert = false;
+  ProviderSubscription<AsyncValue<void>>? _authListener;
+  ProviderSubscription<AsyncValue<void>>? _profileListener;
 
   @override
   void initState() {
     super.initState();
-    ref.listen<AsyncValue<void>>(authControllerProvider, (previous, next) {
+    _authListener = ref.listenManual<AsyncValue<void>>(authControllerProvider, (
+      previous,
+      next,
+    ) {
       next.whenOrNull(
         error: (error, _) {
           final message = error is AuthFailure
@@ -39,6 +48,26 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         },
       );
     });
+
+    _profileListener = ref.listenManual<AsyncValue<void>>(
+      profileControllerProvider,
+      (previous, next) {
+        next.whenOrNull(
+          error: (error, _) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(error.toString())));
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _authListener?.close();
+    _profileListener?.close();
+    super.dispose();
   }
 
   final List<_OverviewItem> _overviewItems = const [
@@ -82,12 +111,35 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     });
   }
 
-  void _confirmDeleteAccount() {
+  Future<void> _confirmDeleteAccount() async {
     setState(() {
       _showDeleteAlert = false;
     });
 
-    context.pushNamed(AuthRoutes.loginName);
+    final user = ref.read(currentUserProvider);
+    final userId = user?.id;
+
+    if (userId == null || userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to delete account: missing id.')),
+      );
+      return;
+    }
+
+    try {
+      await ref
+          .read(profileControllerProvider.notifier)
+          .deleteAccount(userId: userId);
+
+      if (!mounted) return;
+
+      context.goNamed(AuthRoutes.loginName);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete account: $error')),
+      );
+    }
   }
 
   void _dismissAlert() {
@@ -99,8 +151,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final core.User? user = ref.watch(currentUserProvider);
+    final profileUserAsync = ref.watch(profileUserStreamProvider);
+    final core.User? profileUser = profileUserAsync.asData?.value;
     final authState = ref.watch(authControllerProvider);
+    final profileState = ref.watch(profileControllerProvider);
     final bool isAuthProcessing = authState.isLoading;
+    final bool isProfileProcessing = profileState.isLoading;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -126,11 +182,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(context, user),
+                    _buildHeader(
+                      context,
+                      authUser: user,
+                      firestoreUser: profileUser,
+                    ),
                     const SizedBox(height: 24),
                     _buildOverviewSection(),
                     const SizedBox(height: 24),
-                    _buildActionsSection(isAuthProcessing),
+                    _buildActionsSection(isAuthProcessing, isProfileProcessing),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -157,7 +217,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             'Are you sure you want to delete your account? This action cannot be undone.',
                         primaryButtonLabel: 'Delete',
                         secondaryButtonLabel: 'Cancel',
-                        onPrimaryPressed: _confirmDeleteAccount,
+                        onPrimaryPressed: () {
+                          unawaited(_confirmDeleteAccount());
+                        },
                         onSecondaryPressed: _dismissAlert,
                         primaryButtonType: ButtonType.danger,
                         secondaryButtonType: ButtonType.muted,
@@ -182,21 +244,29 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, core.User? user) {
-    final profileImageUrl = user?.image;
-    final displayName = (() {
-      if (user == null) {
-        return 'Explorer';
-      }
-      final name = user.fullName.trim();
-      return name.isEmpty ? 'Explorer' : name;
-    })();
+  Widget _buildHeader(
+    BuildContext context, {
+    required core.User? authUser,
+    required core.User? firestoreUser,
+  }) {
+    final combinedUser = firestoreUser ?? authUser;
+    final profileImageUrl = _resolveProfileImageUrl(
+      firestoreUser: firestoreUser,
+      fallbackUser: authUser,
+    );
+    final hasValidProfileImage = isValidNetworkImageUrl(profileImageUrl);
+    final displayName = _resolveDisplayName(
+      primary: firestoreUser,
+      fallback: authUser,
+    );
 
-    final emailText = (user?.email ?? '').isEmpty
+    final emailSource = combinedUser?.email ?? authUser?.email ?? '';
+    final emailText = emailSource.trim().isEmpty
         ? 'No email linked yet'
-        : user!.email;
-    final joinDateText = user?.createdAt != null
-        ? 'Joined ${_formatJoinDate(user!.createdAt!)}'
+        : emailSource;
+    final joinedAt = firestoreUser?.createdAt ?? authUser?.createdAt;
+    final joinDateText = joinedAt != null
+        ? 'Joined ${_formatJoinDate(joinedAt)}'
         : null;
     final subtitle = joinDateText != null
         ? '$emailText • $joinDateText'
@@ -215,9 +285,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 height: 200,
                 width: double.infinity,
                 color: AppColors.muted,
-                child: profileImageUrl != null && profileImageUrl.isNotEmpty
+                child: hasValidProfileImage
                     ? Image.network(
-                        profileImageUrl,
+                        profileImageUrl!,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
                             _fallbackHeaderImage(),
@@ -252,6 +322,50 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
+  String? _resolveProfileImageUrl({
+    required core.User? firestoreUser,
+    required core.User? fallbackUser,
+  }) {
+    final primaryImage = firestoreUser?.image?.trim();
+    if (primaryImage != null && primaryImage.isNotEmpty) {
+      return primaryImage;
+    }
+
+    final fallbackImage = fallbackUser?.image?.trim();
+    if (fallbackImage != null && fallbackImage.isNotEmpty) {
+      return fallbackImage;
+    }
+
+    return null;
+  }
+
+  String _resolveDisplayName({
+    required core.User? primary,
+    required core.User? fallback,
+  }) {
+    final primaryName = (primary?.fullName ?? '').trim();
+    if (primaryName.isNotEmpty) {
+      return primaryName;
+    }
+
+    final fallbackName = (fallback?.fullName ?? '').trim();
+    if (fallbackName.isNotEmpty) {
+      return fallbackName;
+    }
+
+    final primaryEmail = (primary?.email ?? '').trim();
+    if (primaryEmail.isNotEmpty) {
+      return primaryEmail;
+    }
+
+    final fallbackEmail = (fallback?.email ?? '').trim();
+    if (fallbackEmail.isNotEmpty) {
+      return fallbackEmail;
+    }
+
+    return 'Explorer';
+  }
+
   Widget _buildOverviewSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -276,7 +390,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
-  Widget _buildActionsSection(bool isAuthProcessing) {
+  Widget _buildActionsSection(bool isAuthProcessing, bool isProfileProcessing) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -296,8 +410,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             width: double.infinity,
             child: ActionButton(
               label: 'Delete Account',
-              onPressed: _handleDeleteAccount,
+              onPressed: () {
+                if (!isProfileProcessing) {
+                  _handleDeleteAccount();
+                }
+              },
               type: ButtonType.danger,
+              isLoading: isProfileProcessing,
             ),
           ),
         ],

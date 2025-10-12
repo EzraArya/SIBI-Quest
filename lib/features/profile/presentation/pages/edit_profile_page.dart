@@ -1,34 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
+import 'package:sibi_quest/features/profile/presentation/providers/profile_providers.dart';
 import 'package:sibi_quest/features/profile/profile_router.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/action_button.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/widgets/custom_textfield.dart';
 
-class EditProfilePage extends StatefulWidget {
+class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
 
   @override
-  State<EditProfilePage> createState() => _EditProfilePageState();
+  ConsumerState<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
+class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
   late final TextEditingController _emailController;
-
-  bool _isSaving = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _firstNameController = TextEditingController(text: 'Ayame');
-    _lastNameController = TextEditingController(text: 'Nakamura');
-    _emailController = TextEditingController(
-      text: 'ayame.nakamura@example.com',
-    );
+    final user = ref.read(currentUserProvider);
+    _firstNameController = TextEditingController(text: user?.firstName ?? '');
+    _lastNameController = TextEditingController(text: user?.lastName ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
   }
 
   @override
@@ -42,23 +42,40 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _handleSave() async {
     FocusScope.of(context).unfocus();
     setState(() {
-      _isSaving = true;
       _errorMessage = null;
     });
 
-    // TODO: Connect to profile update service.
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null || currentUser.id == null) {
+      setState(() {
+        _errorMessage = 'You need to be signed in to update your profile.';
+      });
+      return;
+    }
 
-    if (!mounted) return;
-
-    setState(() {
-      _isSaving = false;
-      _errorMessage = null;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile updated successfully.')),
+    final updatedUser = currentUser.copyWith(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      email: _emailController.text.trim(),
     );
+
+    try {
+      await ref
+          .read(profileControllerProvider.notifier)
+          .updateProfile(profile: updatedUser);
+
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully.')),
+      );
+    } catch (error) {
+      setState(() {
+        _errorMessage = error.toString();
+      });
+    }
   }
 
   void _navigateBack() {
@@ -71,6 +88,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final profileState = ref.watch(profileControllerProvider);
+    final isSaving = profileState.isLoading;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -150,9 +170,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     SizedBox(
                       width: double.infinity,
                       child: ActionButton(
-                        label: _isSaving ? 'Saving...' : 'Save',
-                        isLoading: _isSaving,
-                        onPressed: () => _handleSave(),
+                        label: isSaving ? 'Saving...' : 'Save',
+                        isLoading: isSaving,
+                        onPressed: () {
+                          if (!isSaving) {
+                            _handleSave();
+                          }
+                        },
                         type: ButtonType.primary,
                       ),
                     ),
