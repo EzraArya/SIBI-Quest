@@ -10,8 +10,6 @@ import 'package:sibi_quest/shared/widgets/custom_text.dart';
 class PlayTypeThreePage extends StatelessWidget {
   final String promptText;
   final String? selectedImage;
-  final String? gestureLabel;
-  final double? gestureConfidence;
   final bool isProcessing;
   final Future<void> Function(String?) onImageChanged;
 
@@ -19,8 +17,6 @@ class PlayTypeThreePage extends StatelessWidget {
     super.key,
     required this.promptText,
     this.selectedImage,
-    this.gestureLabel,
-    this.gestureConfidence,
     this.isProcessing = false,
     required this.onImageChanged,
   });
@@ -65,13 +61,9 @@ class PlayTypeThreePage extends StatelessWidget {
               // Image display area
               _buildImageArea(),
 
-              // Debug info (if gesture detected)
               if (isProcessing) ...[
                 const SizedBox(height: 12),
                 _buildProcessingInfo(),
-              ] else if (gestureLabel != null) ...[
-                const SizedBox(height: 12),
-                _buildDebugInfo(),
               ],
             ],
           ),
@@ -133,39 +125,11 @@ class PlayTypeThreePage extends StatelessWidget {
     );
   }
 
-  Widget _buildDebugInfo() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CustomText(
-            text: gestureLabel ?? '',
-            type: CustomTextType.bodyBold,
-            color: AppColors.text,
-          ),
-          const SizedBox(width: 16),
-          CustomText(
-            text: gestureConfidence != null
-                ? '${(gestureConfidence! * 100).toStringAsFixed(0)}%'
-                : '--',
-            type: CustomTextType.body,
-            color: AppColors.primary,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildProcessingInfo() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.muted,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -176,9 +140,9 @@ class PlayTypeThreePage extends StatelessWidget {
             height: 16,
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
-          SizedBox(width: 12),
+          SizedBox(width: 8),
           CustomText(
-            text: 'Analyzing gesture...',
+            text: 'Analysing your gesture...',
             type: CustomTextType.body,
             color: AppColors.text,
           ),

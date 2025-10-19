@@ -1,26 +1,33 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
+import 'package:sibi_quest/features/home/domain/models/level.dart'
+    as home_level;
 import 'package:sibi_quest/features/play/domain/models/questions.dart';
 import 'package:sibi_quest/features/play/domain/services/yolo_service.dart';
 import 'package:sibi_quest/features/play/data/static_questions_service.dart';
+import 'package:sibi_quest/features/play/presentation/providers/play_providers.dart';
+import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_one_page.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_two_page.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_three_page.dart';
 import 'package:sibi_quest/shared/widgets/answer_feedback_section.dart';
 
-class PlayPage extends StatefulWidget {
+class PlayPage extends ConsumerStatefulWidget {
   final String? levelId;
 
   const PlayPage({super.key, this.levelId});
 
   @override
-  State<PlayPage> createState() => _PlayPageState();
+  ConsumerState<PlayPage> createState() => _PlayPageState();
 }
 
-class _PlayPageState extends State<PlayPage> {
+class _PlayPageState extends ConsumerState<PlayPage> {
   final YoloService _yoloService = YoloService();
 
   // Game state
@@ -28,6 +35,8 @@ class _PlayPageState extends State<PlayPage> {
   int currentQuestionIndex = 0;
   Question? get currentQuestion =>
       questions.isNotEmpty ? questions[currentQuestionIndex] : null;
+
+  home_level.Level? _activeLevel;
 
   double get progressValue {
     if (questions.isEmpty) {
@@ -54,24 +63,93 @@ class _PlayPageState extends State<PlayPage> {
   int attemptsUsed = 0;
 
   String? selectedImage;
-  String? gestureLabel;
-  double? gestureConfidence;
   bool isDetectingGesture = false;
+  bool? _pendingGestureMatch;
 
   @override
   void initState() {
     super.initState();
-    _loadGameData();
+    unawaited(_loadGameData());
     _initializeYolo();
   }
 
-  void _loadGameData() {
+  Future<void> _loadGameData() async {
     setState(() {
-      questions = StaticQuestionsService.getQuestionsForLevel(widget.levelId);
+      questions = [];
       currentQuestionIndex = 0;
       score = 0;
       _resetQuestionState();
+      _activeLevel = null;
     });
+
+    final levelId = widget.levelId;
+    if (levelId == null || levelId.isEmpty) {
+      setState(() {
+        questions = StaticQuestionsService.getQuestionsForLevel(levelId);
+        currentQuestionIndex = 0;
+        score = 0;
+        _resetQuestionState();
+      });
+      return;
+    }
+
+    try {
+      home_level.Level? levelMetadata;
+      try {
+        levelMetadata = await ref.read(playLevelProvider(levelId).future);
+      } catch (error, stackTrace) {
+        debugPrint(
+          'Failed to load level metadata for $levelId: $error\n$stackTrace',
+        );
+        levelMetadata = null;
+      }
+
+      final fetchedQuestions = await ref.read(
+        playQuestionsProvider(levelId).future,
+      );
+
+      if (!mounted) return;
+
+      if (fetchedQuestions.isEmpty) {
+        setState(() {
+          questions = StaticQuestionsService.getQuestionsForLevel(levelId);
+          currentQuestionIndex = 0;
+          score = 0;
+          _resetQuestionState();
+          _activeLevel = levelMetadata;
+        });
+        return;
+      }
+
+      setState(() {
+        questions = fetchedQuestions;
+        currentQuestionIndex = 0;
+        score = 0;
+        _resetQuestionState();
+        _activeLevel = levelMetadata;
+      });
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Failed to load questions for level $levelId: $error\n$stackTrace',
+      );
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to load level from the cloud. Using offline questions.',
+          ),
+        ),
+      );
+
+      setState(() {
+        questions = StaticQuestionsService.getQuestionsForLevel(levelId);
+        currentQuestionIndex = 0;
+        score = 0;
+        _resetQuestionState();
+        _activeLevel = null;
+      });
+    }
   }
 
   void _resetQuestionState() {
@@ -79,10 +157,9 @@ class _PlayPageState extends State<PlayPage> {
     isAnswerCorrect = null;
     isVerified = false;
     selectedImage = null;
-    gestureLabel = null;
-    gestureConfidence = null;
     isDetectingGesture = false;
     attemptsUsed = 0;
+    _pendingGestureMatch = null;
   }
 
   void _onAnswerSelected(int index) {
@@ -113,8 +190,7 @@ class _PlayPageState extends State<PlayPage> {
 
     setState(() {
       selectedImage = imagePath;
-      gestureLabel = null;
-      gestureConfidence = null;
+      _pendingGestureMatch = null;
       isDetectingGesture = imagePath != null;
       selectedAnswerIndex = null;
       isAnswerCorrect = null;
@@ -131,11 +207,13 @@ class _PlayPageState extends State<PlayPage> {
 
       if (result.isFallback) {
         setState(() {
-          gestureLabel = result.gestureLabel;
-          gestureConfidence = result.confidence;
-          selectedAnswerIndex = 0;
+          _pendingGestureMatch = null;
+          selectedAnswerIndex = null;
           isDetectingGesture = false;
         });
+        _showSnack(
+          'We couldn\'t detect the gesture clearly. Try retaking the photo.',
+        );
         return;
       }
 
@@ -153,20 +231,24 @@ class _PlayPageState extends State<PlayPage> {
           result.confidence >= 0.3;
 
       setState(() {
-        gestureLabel = detectedLabel;
-        gestureConfidence = result.confidence;
-        selectedAnswerIndex = matchesPrompt ? 0 : null;
+        _pendingGestureMatch = matchesPrompt;
+        selectedAnswerIndex = 0;
         isDetectingGesture = false;
       });
+      if (!matchesPrompt) {
+        _showSnack('Gesture captured. Submit to check if it matches!');
+      }
     } catch (error, stackTrace) {
       debugPrint('Gesture detection failed: $error\n$stackTrace');
       if (!mounted) return;
       setState(() {
-        gestureLabel = 'Detected Gesture';
-        gestureConfidence = null;
-        selectedAnswerIndex = 0;
+        _pendingGestureMatch = null;
+        selectedAnswerIndex = null;
         isDetectingGesture = false;
       });
+      _showSnack(
+        'Something went wrong while analysing the gesture. Try again.',
+      );
     }
   }
 
@@ -175,14 +257,24 @@ class _PlayPageState extends State<PlayPage> {
 
     if (!isVerified && selectedAnswerIndex != null) {
       // Verify answer
-      final isCorrect = currentQuestion!.isCorrectAnswer(selectedAnswerIndex!);
+      bool isCorrect;
+      if (currentQuestion!.type == QuestionType.performGesture) {
+        final detection = _pendingGestureMatch;
+        if (detection == null) {
+          _showSnack('Capture your gesture before submitting.');
+          return;
+        }
+        isCorrect = detection;
+      } else {
+        isCorrect = currentQuestion!.isCorrectAnswer(selectedAnswerIndex!);
+      }
       final nextAttempts = attemptsUsed + 1;
       setState(() {
         attemptsUsed = nextAttempts;
         isAnswerCorrect = isCorrect;
         isVerified = true;
         if (isCorrect) {
-          score += 10; // Add points for correct answer
+          score += 50; // Add points for correct answer
         }
       });
       if (!isCorrect) {
@@ -204,8 +296,16 @@ class _PlayPageState extends State<PlayPage> {
           setState(() {
             isVerified = false;
             isAnswerCorrect = null;
-            selectedAnswerIndex = null;
+            if (currentQuestion!.type == QuestionType.performGesture) {
+              selectedAnswerIndex = null;
+              _pendingGestureMatch = null;
+            } else {
+              selectedAnswerIndex = null;
+            }
           });
+          if (currentQuestion!.type == QuestionType.performGesture) {
+            _showSnack('Gesture didn\'t match. Try retaking the photo.');
+          }
         }
       }
     }
@@ -218,13 +318,18 @@ class _PlayPageState extends State<PlayPage> {
         _resetQuestionState();
       });
     } else {
-      _navigateToScore();
+      unawaited(_navigateToScore());
     }
   }
 
-  void _navigateToScore() {
-    // Navigate to score page with final score
-    context.go('/score?score=$score&levelId=${widget.levelId ?? "default"}');
+  Future<void> _navigateToScore() async {
+    final levelId = widget.levelId ?? 'default';
+    await _submitProgress(levelId: levelId);
+    if (!mounted) return;
+
+    final encodedLevelId = Uri.encodeComponent(levelId);
+    final encodedScore = Uri.encodeComponent(score.toString());
+    context.go('/score?score=$encodedScore&levelId=$encodedLevelId');
   }
 
   AnswerFeedbackState _resolveFeedbackState() {
@@ -306,7 +411,7 @@ class _PlayPageState extends State<PlayPage> {
               ),
               onTap: () {
                 Navigator.pop(context);
-                _loadGameData();
+                unawaited(_loadGameData());
               },
             ),
           ],
@@ -376,6 +481,35 @@ class _PlayPageState extends State<PlayPage> {
     );
   }
 
+  Future<void> _submitProgress({required String levelId}) async {
+    final user = ref.read(currentUserProvider);
+    final userId = user?.id;
+    if (userId == null || userId.isEmpty) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(playProgressControllerProvider.notifier)
+          .updateProgress(
+            userId: userId,
+            levelId: levelId,
+            score: score,
+            level: _activeLevel,
+          );
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Failed to sync progress for level $levelId: $error\n$stackTrace',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('We\'ll retry syncing your progress later.'),
+        ),
+      );
+    }
+  }
+
   Widget _buildQuestionContent() {
     switch (currentQuestion!.type) {
       case QuestionType.selectAlphabet:
@@ -400,12 +534,17 @@ class _PlayPageState extends State<PlayPage> {
         return PlayTypeThreePage(
           promptText: currentQuestion!.content.prompt,
           selectedImage: selectedImage,
-          gestureLabel: gestureLabel,
-          gestureConfidence: gestureConfidence,
           isProcessing: isDetectingGesture,
           onImageChanged: _handleGestureImageChanged,
         );
     }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

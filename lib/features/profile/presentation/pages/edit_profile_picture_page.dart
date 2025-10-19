@@ -1,19 +1,27 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
+import 'package:sibi_quest/features/profile/presentation/providers/profile_providers.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/action_button.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 
-class EditProfilePicturePage extends StatefulWidget {
+class EditProfilePicturePage extends ConsumerStatefulWidget {
   const EditProfilePicturePage({super.key});
 
   @override
-  State<EditProfilePicturePage> createState() => _EditProfilePicturePageState();
+  ConsumerState<EditProfilePicturePage> createState() =>
+      _EditProfilePicturePageState();
 }
 
-class _EditProfilePicturePageState extends State<EditProfilePicturePage> {
-  bool _hasSelectedImage = false;
-  bool _isUploading = false;
+class _EditProfilePicturePageState
+    extends ConsumerState<EditProfilePicturePage> {
+  final ImagePicker _imagePicker = ImagePicker();
+  Uint8List? _selectedImageBytes;
   bool _uploadSuccess = false;
   String? _errorMessage;
 
@@ -21,41 +29,71 @@ class _EditProfilePicturePageState extends State<EditProfilePicturePage> {
     context.pop();
   }
 
-  void _handleSelectPhoto() {
+  Future<void> _handleSelectPhoto() async {
     setState(() {
-      _hasSelectedImage = true;
-      _uploadSuccess = false;
       _errorMessage = null;
+      _uploadSuccess = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Image picker coming soon. Using sample preview.'),
-      ),
-    );
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (pickedFile == null) {
+        return;
+      }
+
+      final bytes = await pickedFile.readAsBytes();
+      setState(() {
+        _selectedImageBytes = bytes;
+      });
+    } catch (error) {
+      setState(() {
+        _errorMessage = 'Failed to select image: $error';
+      });
+    }
   }
 
   Future<void> _handleUpload() async {
-    if (!_hasSelectedImage) {
+    if (_selectedImageBytes == null || _selectedImageBytes!.isEmpty) {
       setState(() {
         _errorMessage = 'Please select a photo before uploading.';
       });
       return;
     }
 
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null || currentUser.id == null) {
+      setState(() {
+        _errorMessage = 'You need to be signed in to upload a profile photo.';
+      });
+      return;
+    }
+
     setState(() {
-      _isUploading = true;
       _errorMessage = null;
       _uploadSuccess = false;
     });
 
-    // TODO: Hook into real upload flow.
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    try {
+      await ref
+          .read(profileControllerProvider.notifier)
+          .uploadProfileImage(
+            imageBytes: _selectedImageBytes!,
+            userId: currentUser.id!,
+          );
+    } catch (error) {
+      setState(() {
+        _errorMessage = error.toString();
+      });
+      return;
+    }
 
     if (!mounted) return;
 
     setState(() {
-      _isUploading = false;
       _uploadSuccess = true;
     });
 
@@ -66,7 +104,7 @@ class _EditProfilePicturePageState extends State<EditProfilePicturePage> {
 
   void _clearSelection() {
     setState(() {
-      _hasSelectedImage = false;
+      _selectedImageBytes = null;
       _uploadSuccess = false;
       _errorMessage = null;
     });
@@ -74,6 +112,9 @@ class _EditProfilePicturePageState extends State<EditProfilePicturePage> {
 
   @override
   Widget build(BuildContext context) {
+    final profileState = ref.watch(profileControllerProvider);
+    final isUploading = profileState.isLoading;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -126,19 +167,23 @@ class _EditProfilePicturePageState extends State<EditProfilePicturePage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    if (_hasSelectedImage)
+                    if (_selectedImageBytes != null)
                       SizedBox(
                         width: double.infinity,
                         child: ActionButton(
-                          label: _isUploading
+                          label: isUploading
                               ? 'Uploading...'
                               : 'Update Profile Picture',
-                          isLoading: _isUploading,
-                          onPressed: () => _handleUpload(),
+                          isLoading: isUploading,
+                          onPressed: () {
+                            if (!isUploading) {
+                              _handleUpload();
+                            }
+                          },
                           type: ButtonType.primary,
                         ),
                       ),
-                    if (_hasSelectedImage) ...[
+                    if (_selectedImageBytes != null) ...[
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
@@ -150,7 +195,7 @@ class _EditProfilePicturePageState extends State<EditProfilePicturePage> {
                       ),
                     ],
                     const SizedBox(height: 20),
-                    if (_isUploading)
+                    if (isUploading)
                       const _StatusRow(
                         icon: Icons.sync_rounded,
                         color: AppColors.placeholder,
@@ -189,15 +234,24 @@ class _EditProfilePicturePageState extends State<EditProfilePicturePage> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: _hasSelectedImage ? AppColors.primary : AppColors.line,
+              color: _selectedImageBytes != null
+                  ? AppColors.primary
+                  : AppColors.line,
               width: 2,
             ),
           ),
           child: CircleAvatar(
             radius: 70,
             backgroundColor: AppColors.muted,
-            child: _hasSelectedImage
-                ? const Icon(Icons.person, size: 72, color: AppColors.text)
+            child: _selectedImageBytes != null
+                ? ClipOval(
+                    child: Image.memory(
+                      _selectedImageBytes!,
+                      width: 140,
+                      height: 140,
+                      fit: BoxFit.cover,
+                    ),
+                  )
                 : const Icon(
                     Icons.person_outline,
                     size: 72,
@@ -207,7 +261,9 @@ class _EditProfilePicturePageState extends State<EditProfilePicturePage> {
         ),
         const SizedBox(height: 12),
         CustomText(
-          text: _hasSelectedImage ? 'Preview Ready' : 'Current Profile Picture',
+          text: _selectedImageBytes != null
+              ? 'Preview Ready'
+              : 'Current Profile Picture',
           type: CustomTextType.bodyBold,
           color: AppColors.text,
         ),

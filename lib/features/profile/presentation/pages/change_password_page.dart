@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sibi_quest/features/profile/presentation/providers/profile_providers.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/action_button.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/widgets/custom_textfield.dart';
 
-class ChangePasswordPage extends StatefulWidget {
+class ChangePasswordPage extends ConsumerStatefulWidget {
   const ChangePasswordPage({super.key});
 
   @override
-  State<ChangePasswordPage> createState() => _ChangePasswordPageState();
+  ConsumerState<ChangePasswordPage> createState() => _ChangePasswordPageState();
 }
 
-class _ChangePasswordPageState extends State<ChangePasswordPage> {
+class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
   late final TextEditingController _oldPasswordController;
   late final TextEditingController _newPasswordController;
   late final TextEditingController _confirmPasswordController;
 
-  bool _isSaving = false;
   String? _errorMessage;
 
   @override
@@ -47,18 +48,21 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     }
 
     setState(() {
-      _isSaving = true;
       _errorMessage = null;
     });
 
-    // TODO: Integrate with password change flow.
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    try {
+      await ref
+          .read(profileControllerProvider.notifier)
+          .updatePassword(newPassword: _newPasswordController.text);
+    } catch (error) {
+      setState(() {
+        _errorMessage = error.toString();
+      });
+      return;
+    }
 
     if (!mounted) return;
-
-    setState(() {
-      _isSaving = false;
-    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Password updated successfully.')),
@@ -72,6 +76,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final profileState = ref.watch(profileControllerProvider);
+    final isSaving = profileState.isLoading;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -143,9 +150,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ActionButton(
-                        label: _isSaving ? 'Saving...' : 'Save',
-                        isLoading: _isSaving,
-                        onPressed: () => _handleSave(),
+                        label: isSaving ? 'Saving...' : 'Save',
+                        isLoading: isSaving,
+                        onPressed: () {
+                          if (!isSaving) {
+                            _handleSave();
+                          }
+                        },
                         type: ButtonType.primary,
                       ),
                     ),

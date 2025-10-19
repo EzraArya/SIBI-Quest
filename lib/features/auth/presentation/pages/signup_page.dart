@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/custom_textfield.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/widgets/action_button.dart';
 
-class SignupPage extends StatefulWidget {
+import 'package:sibi_quest/features/auth/auth_router.dart';
+import 'package:sibi_quest/features/auth/domain/auth_failure.dart';
+import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
+import 'package:sibi_quest/features/dashboard/dashboard_router.dart';
+import 'package:sibi_quest/features/onboarding/onboarding_router.dart';
+import 'package:sibi_quest/cores/models/user.dart' as core;
+
+class SignupPage extends ConsumerStatefulWidget {
   const SignupPage({super.key});
 
   @override
-  State<SignupPage> createState() => _SignupPageState();
+  ConsumerState<SignupPage> createState() => _SignupPageState();
 }
 
-class _SignupPageState extends State<SignupPage> {
+class _SignupPageState extends ConsumerState<SignupPage> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
@@ -30,9 +38,37 @@ class _SignupPageState extends State<SignupPage> {
   String? _emailError;
   String? _passwordError;
   String? _confirmPasswordError;
+  late final ProviderSubscription<AsyncValue<void>> _authListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _authListener = ref.listenManual<AsyncValue<void>>(authControllerProvider, (
+      previous,
+      next,
+    ) {
+      next.whenOrNull(
+        error: (error, _) {
+          final message = error is AuthFailure
+              ? error.message
+              : 'Failed to sign up. Please try again.';
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        },
+        data: (_) {
+          final wasLoading = previous?.isLoading ?? false;
+          if (wasLoading) {
+            context.go(DashboardRoutes.homePath);
+          }
+        },
+      );
+    });
+  }
 
   @override
   void dispose() {
+    _authListener.close();
     _ageController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
@@ -218,6 +254,9 @@ class _SignupPageState extends State<SignupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authControllerProvider);
+    final isLoading = authState.isLoading && _currentPage == 3;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -233,7 +272,11 @@ class _SignupPageState extends State<SignupPage> {
                   IconButton(
                     icon: Icon(Icons.arrow_back, color: AppColors.secondary),
                     onPressed: () {
-                      _currentPage > 0 ? prevPage() : context.go('/');
+                      if (_currentPage > 0) {
+                        prevPage();
+                      } else {
+                        context.go(OnboardingRoutes.welcomePath);
+                      }
                     },
                   ),
                   Expanded(
@@ -285,21 +328,50 @@ class _SignupPageState extends State<SignupPage> {
                 child: ActionButton(
                   label: _currentPage < 3 ? 'Next' : 'Finish',
                   type: ButtonType.primary,
+                  isLoading: isLoading,
                   onPressed: () {
                     if (_validateCurrentPage()) {
                       if (_currentPage < 3) {
                         nextPage();
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Signup successful!')),
+                        if (authState.isLoading) {
+                          return;
+                        }
+                        final user = core.User(
+                          firstName: _firstNameController.text.trim(),
+                          lastName: _lastNameController.text.trim(),
+                          email: _emailController.text.trim(),
+                          age: int.tryParse(_ageController.text.trim()) ?? 0,
+                          currentLevel: null,
+                          image: null,
                         );
-                        context.go('/dashboard/home');
+
+                        ref
+                            .read(authControllerProvider.notifier)
+                            .signUp(
+                              user: user,
+                              password: _passwordController.text,
+                            );
                       }
                     }
                   },
                 ),
               ),
             ),
+            if (_currentPage == 0)
+              TextButton(
+                onPressed: () {
+                  context.go(AuthRoutes.loginPath);
+                },
+                child: const Text('Already have an account? Sign in'),
+              )
+            else if (_currentPage == 3)
+              TextButton(
+                onPressed: () {
+                  context.go(AuthRoutes.loginPath);
+                },
+                child: const Text('Already registered? Sign in'),
+              ),
           ],
         ),
       ),

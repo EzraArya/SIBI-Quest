@@ -21,54 +21,39 @@ class PlayTypeTwoPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
         Row(
-          children: [
-            const CustomText(
+          children: const [
+            CustomText(
               text: "Select the correct",
               type: CustomTextType.title,
               color: AppColors.text,
             ),
-            const SizedBox(width: 8),
-            const CustomText(
+            SizedBox(width: 8),
+            CustomText(
               text: "Gesture",
               type: CustomTextType.title,
               color: AppColors.primary,
             ),
           ],
         ),
-
-        const Spacer(),
-
-        // Content
+        const SizedBox(height: 24),
         Center(
-          child: Column(
-            children: [
-              // Prompt text (large font)
-              CustomText(
-                text: promptText,
-                type: CustomTextType.display,
-                color: AppColors.secondary,
-              ),
-
-              const SizedBox(height: 36),
-
-              // Answer grid (images)
-              _buildImageAnswerGrid(),
-            ],
+          child: CustomText(
+            text: promptText,
+            type: CustomTextType.display,
+            color: AppColors.secondary,
           ),
         ),
-
-        const Spacer(),
-        const Spacer(),
+        const SizedBox(height: 36),
+        Expanded(child: _buildImageAnswerGrid()),
       ],
     );
   }
 
   Widget _buildImageAnswerGrid() {
     return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 24),
+      physics: const BouncingScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 16,
@@ -91,35 +76,30 @@ class PlayTypeTwoPage extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Image placeholder
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.complementary
-                          : AppColors.secondary,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      Icons.gesture,
-                      color: isSelected
-                          ? AppColors.background
-                          : AppColors.primary,
-                      size: 24,
-                    ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                color: AppColors.muted,
+                child: Image.network(
+                  answerOptions[index],
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, _) => Icon(
+                    Icons.broken_image,
+                    color: isSelected ? Colors.white : AppColors.secondary,
                   ),
-                  const SizedBox(height: 8),
-                  CustomText(
-                    text: answerOptions[index],
-                    type: CustomTextType.body,
-                    color: isSelected ? Colors.white : AppColors.text,
-                  ),
-                ],
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) {
+                      return child;
+                    }
+                    return const Center(
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),

@@ -1,34 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sibi_quest/cores/models/user.dart' as core;
+import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
+import 'package:sibi_quest/features/profile/presentation/providers/profile_providers.dart';
 import 'package:sibi_quest/features/profile/profile_router.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/action_button.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/widgets/custom_textfield.dart';
 
-class EditProfilePage extends StatefulWidget {
+class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
 
   @override
-  State<EditProfilePage> createState() => _EditProfilePageState();
+  ConsumerState<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
+class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
   late final TextEditingController _emailController;
-
-  bool _isSaving = false;
+  core.User? _firestoreUser;
+  bool _hasSeededFromFirestore = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _firstNameController = TextEditingController(text: 'Ayame');
-    _lastNameController = TextEditingController(text: 'Nakamura');
-    _emailController = TextEditingController(
-      text: 'ayame.nakamura@example.com',
-    );
+    final user = ref.read(currentUserProvider);
+    _firstNameController = TextEditingController(text: user?.firstName ?? '');
+    _lastNameController = TextEditingController(text: user?.lastName ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+
+    ref.listen<AsyncValue<core.User?>>(profileUserStreamProvider, (
+      previous,
+      next,
+    ) {
+      next.whenData((profile) {
+        _firestoreUser = profile;
+        if (!_hasSeededFromFirestore && profile != null) {
+          _hasSeededFromFirestore = true;
+          _firstNameController.text = profile.firstName;
+          _lastNameController.text = profile.lastName;
+          _emailController.text = profile.email;
+        }
+      });
+    });
   }
 
   @override
@@ -42,23 +60,62 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _handleSave() async {
     FocusScope.of(context).unfocus();
     setState(() {
-      _isSaving = true;
       _errorMessage = null;
     });
 
-    // TODO: Connect to profile update service.
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    final firestoreProfile =
+        _firestoreUser ??
+        ref
+            .read(profileUserStreamProvider)
+            .maybeWhen(data: (value) => value, orElse: () => null);
+    final currentUser = firestoreProfile ?? ref.read(currentUserProvider);
+    if (currentUser == null || currentUser.id == null) {
+      setState(() {
+        _errorMessage = 'You need to be signed in to update your profile.';
+      });
+      return;
+    }
 
-    if (!mounted) return;
+    final trimmedFirst = _firstNameController.text.trim();
+    final trimmedLast = _lastNameController.text.trim();
+    final trimmedEmail = _emailController.text.trim();
 
-    setState(() {
-      _isSaving = false;
-      _errorMessage = null;
-    });
+    final updates = <String, dynamic>{};
+    if (trimmedFirst != currentUser.firstName) {
+      updates['firstName'] = trimmedFirst;
+    }
+    if (trimmedLast != currentUser.lastName) {
+      updates['lastName'] = trimmedLast;
+    }
+    if (trimmedEmail != currentUser.email) {
+      updates['email'] = trimmedEmail;
+    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile updated successfully.')),
-    );
+    if (updates.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Nothing to update.')));
+      return;
+    }
+
+    try {
+      await ref
+          .read(profileControllerProvider.notifier)
+          .updateProfile(userId: currentUser.id!, updates: updates);
+
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully.')),
+      );
+    } catch (error) {
+      setState(() {
+        _errorMessage = error.toString();
+      });
+    }
   }
 
   void _navigateBack() {
@@ -71,6 +128,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final profileState = ref.watch(profileControllerProvider);
+    final isSaving = profileState.isLoading;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -150,9 +210,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     SizedBox(
                       width: double.infinity,
                       child: ActionButton(
-                        label: _isSaving ? 'Saving...' : 'Save',
-                        isLoading: _isSaving,
-                        onPressed: () => _handleSave(),
+                        label: isSaving ? 'Saving...' : 'Save',
+                        isLoading: isSaving,
+                        onPressed: () {
+                          if (!isSaving) {
+                            _handleSave();
+                          }
+                        },
                         type: ButtonType.primary,
                       ),
                     ),

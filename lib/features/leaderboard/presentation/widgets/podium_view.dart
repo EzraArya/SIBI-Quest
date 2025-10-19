@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sibi_quest/features/leaderboard/domain/models/leaderboard_player.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
+import 'package:sibi_quest/shared/utils/image_url_validator.dart';
 
 class PodiumView extends StatelessWidget {
   final List<LeaderboardPlayer> players;
@@ -79,6 +80,7 @@ class _PlayerAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = player.imageUrl;
+    final hasValidImage = isValidNetworkImageUrl(imageUrl);
 
     return Container(
       width: 68,
@@ -89,12 +91,10 @@ class _PlayerAvatar extends StatelessWidget {
       ),
       child: CircleAvatar(
         backgroundColor: AppColors.muted,
-        backgroundImage: imageUrl != null && imageUrl.isNotEmpty
-            ? NetworkImage(imageUrl)
-            : null,
-        child: imageUrl == null || imageUrl.isEmpty
-            ? const Icon(Icons.person, color: AppColors.placeholder, size: 28)
-            : null,
+        backgroundImage: hasValidImage ? NetworkImage(imageUrl!) : null,
+        child: hasValidImage
+            ? null
+            : const Icon(Icons.person, color: AppColors.placeholder, size: 28),
       ),
     );
   }
