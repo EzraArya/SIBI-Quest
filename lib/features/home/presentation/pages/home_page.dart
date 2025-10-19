@@ -72,6 +72,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     final sectionsAsync = ref.watch(sectionsProvider);
     final levelsAsync = ref.watch(homeLevelsProvider);
 
+    final displayName = () {
+      final rawName = (user?.firstName ?? '').trim();
+      if (rawName.isNotEmpty) {
+        return rawName;
+      }
+      return 'Explorer';
+    }();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -88,9 +96,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     color: AppColors.text,
                   ),
                   CustomText(
-                    text: (user?.firstName ?? 'Explorer').isEmpty
-                        ? 'Explorer'
-                        : user!.firstName,
+                    text: displayName,
                     type: CustomTextType.title,
                     color: AppColors.accent,
                   ),

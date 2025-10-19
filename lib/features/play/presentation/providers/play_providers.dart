@@ -52,17 +52,10 @@ class PlayProgressController extends AsyncNotifier<void> {
   }) async {
     state = const AsyncLoading();
     try {
-      home_level.Level? resolvedLevel = level;
+      final resolvedLevel =
+          level ?? await _service.fetchLevel(levelId: levelId);
 
-      if (resolvedLevel == null) {
-        try {
-          resolvedLevel = await _service.fetchLevel(levelId: levelId);
-        } catch (_) {
-          resolvedLevel = null;
-        }
-      }
-
-      final threshold = resolvedLevel?.minScore ?? 0;
+      final threshold = resolvedLevel.minScore;
       final hasClearedLevel = score >= threshold;
 
       final currentProgress = UserLevelData(
@@ -75,7 +68,7 @@ class PlayProgressController extends AsyncNotifier<void> {
 
       ({String levelId, UserLevelData data})? unlockedLevel;
 
-      if (hasClearedLevel && resolvedLevel != null) {
+      if (hasClearedLevel) {
         final nextLevel = await _service.fetchNextLevel(
           sectionId: resolvedLevel.sectionId,
           currentNumber: resolvedLevel.number,
