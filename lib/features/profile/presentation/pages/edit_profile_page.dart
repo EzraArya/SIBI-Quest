@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sibi_quest/cores/models/user.dart' as core;
 import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
 import 'package:sibi_quest/features/profile/presentation/providers/profile_providers.dart';
 import 'package:sibi_quest/features/profile/profile_router.dart';
@@ -20,6 +21,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
   late final TextEditingController _emailController;
+  core.User? _firestoreUser;
+  bool _hasSeededFromFirestore = false;
   String? _errorMessage;
 
   @override
@@ -29,6 +32,21 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     _firstNameController = TextEditingController(text: user?.firstName ?? '');
     _lastNameController = TextEditingController(text: user?.lastName ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
+
+    ref.listen<AsyncValue<core.User?>>(profileUserStreamProvider, (
+      previous,
+      next,
+    ) {
+      next.whenData((profile) {
+        _firestoreUser = profile;
+        if (!_hasSeededFromFirestore && profile != null) {
+          _hasSeededFromFirestore = true;
+          _firstNameController.text = profile.firstName;
+          _lastNameController.text = profile.lastName;
+          _emailController.text = profile.email;
+        }
+      });
+    });
   }
 
   @override
@@ -45,7 +63,12 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       _errorMessage = null;
     });
 
-    final currentUser = ref.read(currentUserProvider);
+    final firestoreProfile =
+        _firestoreUser ??
+        ref
+            .read(profileUserStreamProvider)
+            .maybeWhen(data: (value) => value, orElse: () => null);
+    final currentUser = firestoreProfile ?? ref.read(currentUserProvider);
     if (currentUser == null || currentUser.id == null) {
       setState(() {
         _errorMessage = 'You need to be signed in to update your profile.';
@@ -53,16 +76,33 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       return;
     }
 
-    final updatedUser = currentUser.copyWith(
-      firstName: _firstNameController.text.trim(),
-      lastName: _lastNameController.text.trim(),
-      email: _emailController.text.trim(),
-    );
+    final trimmedFirst = _firstNameController.text.trim();
+    final trimmedLast = _lastNameController.text.trim();
+    final trimmedEmail = _emailController.text.trim();
+
+    final updates = <String, dynamic>{};
+    if (trimmedFirst != currentUser.firstName) {
+      updates['firstName'] = trimmedFirst;
+    }
+    if (trimmedLast != currentUser.lastName) {
+      updates['lastName'] = trimmedLast;
+    }
+    if (trimmedEmail != currentUser.email) {
+      updates['email'] = trimmedEmail;
+    }
+
+    if (updates.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Nothing to update.')));
+      return;
+    }
 
     try {
       await ref
           .read(profileControllerProvider.notifier)
-          .updateProfile(profile: updatedUser);
+          .updateProfile(userId: currentUser.id!, updates: updates);
 
       if (!mounted) return;
       setState(() {

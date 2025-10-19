@@ -72,14 +72,16 @@ class ProfileController extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
-  Future<void> updateProfile({required core.User profile}) async {
-    final userId = profile.id ?? ref.read(currentUserProvider)?.id;
-    if (userId == null || userId.isEmpty) {
+  Future<void> updateProfile({
+    required String userId,
+    required Map<String, dynamic> updates,
+  }) async {
+    if (userId.isEmpty) {
       throw const ProfileNetworkException.notAuthenticated();
     }
 
     await _execute(() async {
-      await _service.updateProfile(userId: userId, profile: profile);
+      await _service.updateProfile(userId: userId, updates: updates);
       ref.invalidate(currentUserProvider);
     });
   }

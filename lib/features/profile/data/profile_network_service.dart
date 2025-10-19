@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
-import 'package:sibi_quest/cores/models/user.dart' as core;
 import 'package:sibi_quest/cores/utils/services/cloudinary_service.dart';
 
 /// Firestore + Cloudinary backed profile gateway mirroring the Swift
@@ -26,12 +25,18 @@ class ProfileNetworkService {
   /// Persists the provided profile information under `users/{userId}`.
   Future<void> updateProfile({
     required String userId,
-    required core.User profile,
+    required Map<String, dynamic> updates,
   }) async {
-    final data = profile.toJson();
-    data.removeWhere((key, value) => value == null);
+    final sanitizedUpdates = Map<String, dynamic>.from(updates)
+      ..removeWhere((key, value) => value == null);
 
-    await _usersCollection.doc(userId).set(data, SetOptions(merge: true));
+    if (sanitizedUpdates.isEmpty) {
+      return;
+    }
+
+    await _usersCollection
+        .doc(userId)
+        .set(sanitizedUpdates, SetOptions(merge: true));
   }
 
   /// Updates the password for the current Firebase user.
@@ -61,11 +66,21 @@ class ProfileNetworkService {
     return secureUrl;
   }
 
-  /// Permanently removes the user's profile document, subcollections, and
-  /// Firebase Auth account.
+  /// Permanently removes the Firebase Auth account and, once successful,
+  /// purges the profile document plus `levelData` subcollection.
   Future<void> deleteAccount({required String userId}) async {
-    final userDoc = _usersCollection.doc(userId);
+    final currentUser = _firebaseAuth.currentUser;
+    if (currentUser == null || currentUser.uid != userId) {
+      throw const ProfileNetworkException.notAuthenticated();
+    }
 
+    try {
+      await currentUser.delete();
+    } on firebase_auth.FirebaseAuthException catch (error) {
+      throw ProfileNetworkException.accountDeletionFailed(error.message);
+    }
+
+    final userDoc = _usersCollection.doc(userId);
     final levelDataSnapshot = await userDoc.collection('levelData').get();
     final batch = _firestore.batch();
 
@@ -75,11 +90,6 @@ class ProfileNetworkService {
 
     batch.delete(userDoc);
     await batch.commit();
-
-    final currentUser = _firebaseAuth.currentUser;
-    if (currentUser != null && currentUser.uid == userId) {
-      await currentUser.delete();
-    }
   }
 
   /// Releases any resources held by the underlying services.
