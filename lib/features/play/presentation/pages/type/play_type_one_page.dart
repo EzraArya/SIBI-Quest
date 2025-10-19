@@ -21,78 +21,63 @@ class PlayTypeOnePage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
         Row(
-          children: [
-            const CustomText(
+          children: const [
+            CustomText(
               text: "Select the correct",
               type: CustomTextType.title,
               color: AppColors.text,
             ),
-            const SizedBox(width: 8),
-            const CustomText(
+            SizedBox(width: 8),
+            CustomText(
               text: "Alphabet",
               type: CustomTextType.title,
               color: AppColors.primary,
             ),
           ],
         ),
-
-        const Spacer(),
-
-        // Content
+        const SizedBox(height: 24),
         Center(
-          child: Column(
-            children: [
-              // Prompt image fetched from remote URL
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: 96,
-                  height: 96,
-                  color: AppColors.muted,
-                  child: Image.network(
-                    promptImage,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, _) => Icon(
-                      Icons.broken_image,
-                      color: AppColors.secondary,
-                      size: 36,
-                    ),
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) {
-                        return child;
-                      }
-                      return const Center(
-                        child: SizedBox(
-                          width: 32,
-                          height: 32,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      );
-                    },
-                  ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 96,
+              height: 96,
+              color: AppColors.muted,
+              child: Image.network(
+                promptImage,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, _) => Icon(
+                  Icons.broken_image,
+                  color: AppColors.secondary,
+                  size: 36,
                 ),
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) {
+                    return child;
+                  }
+                  return const Center(
+                    child: SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
               ),
-
-              const SizedBox(height: 36),
-
-              // Answer grid
-              _buildAnswerGrid(),
-            ],
+            ),
           ),
         ),
-
-        const Spacer(),
-        const Spacer(),
+        const SizedBox(height: 36),
+        Expanded(child: _buildAnswerGrid()),
       ],
     );
   }
 
   Widget _buildAnswerGrid() {
     return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 24),
+      physics: const BouncingScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 16,

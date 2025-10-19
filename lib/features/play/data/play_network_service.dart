@@ -23,6 +23,10 @@ class PlayNetworkService {
     return _firestore.collection('users').doc(userId).collection('levelData');
   }
 
+  DocumentReference<Map<String, dynamic>> _userDocument(String userId) {
+    return _firestore.collection('users').doc(userId);
+  }
+
   /// Fetches a level document by [levelId].
   Future<domain_level.Level> fetchLevel({required String levelId}) async {
     try {
@@ -71,11 +75,40 @@ class PlayNetworkService {
     }
   }
 
+  Future<domain_level.Level?> fetchNextLevel({
+    required String sectionId,
+    required int currentNumber,
+  }) async {
+    try {
+      final query = await _levelsCollection
+          .where('sectionId', isEqualTo: sectionId)
+          .orderBy('number')
+          .startAfter([currentNumber])
+          .limit(1)
+          .get();
+
+      if (query.docs.isEmpty) {
+        return null;
+      }
+
+      final snapshot = query.docs.first;
+      final data = snapshot.data();
+      final payload = <String, dynamic>{'id': snapshot.id, ...data};
+      return domain_level.Level.fromJson(payload);
+    } on FirebaseException catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        PlayNetworkException.firebaseFailure(error.message),
+        stackTrace,
+      );
+    }
+  }
+
   /// Updates the user's aggregated level data under `users/{userId}`.
   Future<void> updateUserLevelData({
     required String userId,
     required String levelId,
     required UserLevelData userLevelData,
+    ({String levelId, UserLevelData data})? unlockedLevel,
   }) async {
     try {
       final docRef = _userLevelCollection(userId).doc(levelId);
@@ -95,7 +128,55 @@ class PlayNetworkService {
       final merged = _mergeUserLevelData(current, userLevelData);
       final payload = _encodeUserLevelData(merged);
 
-      await docRef.set(payload, SetOptions(merge: true));
+      final batch = _firestore.batch();
+      batch.set(docRef, payload, SetOptions(merge: true));
+
+      int scoreDelta = 0;
+      final bool levelCleared = merged.status == UserLevelStatus.completed;
+      if (levelCleared && merged.bestScore > (current?.bestScore ?? 0)) {
+        scoreDelta = merged.bestScore - (current?.bestScore ?? 0);
+      }
+
+      if (unlockedLevel != null) {
+        final nextDocRef = _userLevelCollection(
+          userId,
+        ).doc(unlockedLevel.levelId);
+        final nextExisting = await nextDocRef.get();
+        UserLevelData? currentNext;
+        if (nextExisting.exists) {
+          final data = nextExisting.data();
+          if (data != null) {
+            currentNext = UserLevelData.fromJson(<String, dynamic>{
+              'id': nextExisting.id,
+              ...data,
+            });
+          }
+        }
+
+        final mergedNext = _mergeUserLevelData(currentNext, unlockedLevel.data);
+        final nextPayload = _encodeUserLevelData(mergedNext);
+        batch.set(nextDocRef, nextPayload, SetOptions(merge: true));
+      }
+
+      if (scoreDelta > 0 || levelCleared || unlockedLevel != null) {
+        final userDoc = _userDocument(userId);
+        final updateData = <String, dynamic>{};
+
+        if (scoreDelta > 0) {
+          updateData['totalScore'] = FieldValue.increment(scoreDelta);
+        }
+
+        if (levelCleared) {
+          final targetLevelId = unlockedLevel?.levelId ?? levelId;
+          updateData['currentLevel'] = targetLevelId;
+        }
+
+        if (updateData.isNotEmpty) {
+          batch.set(userDoc, updateData, SetOptions(merge: true));
+        }
+      }
+
+      await batch.commit();
     } on FirebaseException catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PlayNetworkException.firebaseFailure(error.message),

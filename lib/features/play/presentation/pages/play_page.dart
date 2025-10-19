@@ -6,12 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
+import 'package:sibi_quest/features/home/domain/models/level.dart'
+    as home_level;
 import 'package:sibi_quest/features/play/domain/models/questions.dart';
 import 'package:sibi_quest/features/play/domain/services/yolo_service.dart';
 import 'package:sibi_quest/features/play/data/static_questions_service.dart';
 import 'package:sibi_quest/features/play/presentation/providers/play_providers.dart';
 import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
-import 'package:sibi_quest/cores/models/user_level_data.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_one_page.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_two_page.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_three_page.dart';
@@ -34,6 +35,8 @@ class _PlayPageState extends ConsumerState<PlayPage> {
   int currentQuestionIndex = 0;
   Question? get currentQuestion =>
       questions.isNotEmpty ? questions[currentQuestionIndex] : null;
+
+  home_level.Level? _activeLevel;
 
   double get progressValue {
     if (questions.isEmpty) {
@@ -76,6 +79,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
       currentQuestionIndex = 0;
       score = 0;
       _resetQuestionState();
+      _activeLevel = null;
     });
 
     final levelId = widget.levelId;
@@ -90,6 +94,16 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     }
 
     try {
+      home_level.Level? levelMetadata;
+      try {
+        levelMetadata = await ref.read(playLevelProvider(levelId).future);
+      } catch (error, stackTrace) {
+        debugPrint(
+          'Failed to load level metadata for $levelId: $error\n$stackTrace',
+        );
+        levelMetadata = null;
+      }
+
       final fetchedQuestions = await ref.read(
         playQuestionsProvider(levelId).future,
       );
@@ -102,6 +116,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
           currentQuestionIndex = 0;
           score = 0;
           _resetQuestionState();
+          _activeLevel = levelMetadata;
         });
         return;
       }
@@ -111,6 +126,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         currentQuestionIndex = 0;
         score = 0;
         _resetQuestionState();
+        _activeLevel = levelMetadata;
       });
     } catch (error, stackTrace) {
       debugPrint(
@@ -131,6 +147,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         currentQuestionIndex = 0;
         score = 0;
         _resetQuestionState();
+        _activeLevel = null;
       });
     }
   }
@@ -257,7 +274,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         isAnswerCorrect = isCorrect;
         isVerified = true;
         if (isCorrect) {
-          score += 10; // Add points for correct answer
+          score += 50; // Add points for correct answer
         }
       });
       if (!isCorrect) {
@@ -471,16 +488,15 @@ class _PlayPageState extends ConsumerState<PlayPage> {
       return;
     }
 
-    final progress = UserLevelData(
-      status: UserLevelStatus.completed,
-      bestScore: score,
-      lastAttempted: DateTime.now(),
-    );
-
     try {
       await ref
           .read(playProgressControllerProvider.notifier)
-          .updateProgress(userId: userId, levelId: levelId, progress: progress);
+          .updateProgress(
+            userId: userId,
+            levelId: levelId,
+            score: score,
+            level: _activeLevel,
+          );
     } catch (error, stackTrace) {
       debugPrint(
         'Failed to sync progress for level $levelId: $error\n$stackTrace',

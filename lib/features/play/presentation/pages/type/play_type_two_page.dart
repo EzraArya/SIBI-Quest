@@ -21,54 +21,39 @@ class PlayTypeTwoPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
         Row(
-          children: [
-            const CustomText(
+          children: const [
+            CustomText(
               text: "Select the correct",
               type: CustomTextType.title,
               color: AppColors.text,
             ),
-            const SizedBox(width: 8),
-            const CustomText(
+            SizedBox(width: 8),
+            CustomText(
               text: "Gesture",
               type: CustomTextType.title,
               color: AppColors.primary,
             ),
           ],
         ),
-
-        const Spacer(),
-
-        // Content
+        const SizedBox(height: 24),
         Center(
-          child: Column(
-            children: [
-              // Prompt text (large font)
-              CustomText(
-                text: promptText,
-                type: CustomTextType.display,
-                color: AppColors.secondary,
-              ),
-
-              const SizedBox(height: 36),
-
-              // Answer grid (images)
-              _buildImageAnswerGrid(),
-            ],
+          child: CustomText(
+            text: promptText,
+            type: CustomTextType.display,
+            color: AppColors.secondary,
           ),
         ),
-
-        const Spacer(),
-        const Spacer(),
+        const SizedBox(height: 36),
+        Expanded(child: _buildImageAnswerGrid()),
       ],
     );
   }
 
   Widget _buildImageAnswerGrid() {
     return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 24),
+      physics: const BouncingScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 16,

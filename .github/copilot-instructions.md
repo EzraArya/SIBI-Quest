@@ -1,63 +1,46 @@
 # SIBI-Quest – AI Coding Playbook
 
-## Architecture quickstart
-- `lib/main.dart` boots `App` (`lib/app/app.dart`), which builds the dark theme via `buildDarkTheme` and wires `appRouter` from `app_router.dart`.
-- Features live in `lib/features/<feature>/` with `data`, `domain`, and `presentation` subfolders; shared widgets/tokens sit in `lib/shared/`.
-- `buildDarkTheme` establishes a Material 3 dark palette—new `Scaffold`s should inherit it; override sparingly.
-- Firebase initializes before `runApp` and the widget tree is wrapped in `ProviderScope`; don’t bypass this when writing entrypoints or tests.
+## Architecture & entrypoints
+- `lib/main.dart` just hydrates Firebase, opens a `ProviderScope`, and mounts `App`; keep it thin and reuse `App(home: ...)` in tests when you need to bypass routing.
+- `App` (`lib/app/app.dart`) wires the dark Material 3 theme via `buildDarkTheme` (`lib/app/theme.dart`) and central router config from `app_router.dart`.
+- Features follow `lib/features/<feature>/{data,domain,presentation}/`; cross-cutting models/utilities sit under `lib/cores/`, shared UI tokens/widgets live in `lib/shared/`.
+- Firebase is the only backend—Firestore collections mirror the `cores/models/*` contracts so Flutter and the Swift client share JSON shapes.
 
-## Navigation & state
-- Routes fan in through `appRouter` by collecting each feature’s static `routes()` helper (see `features/play/play_router.dart`).
-- Dashboard uses a `ShellRoute` + `DashboardShell`; navigate tabs with `context.go('/dashboard/<tab>')` so the shell keeps `selectedIndex` in sync.
-- Cross-screen data travels via GoRouter query parameters (`levelId`, `score`); read with `GoRouterState.uri.queryParameters` rather than globals.
+## Routing & state management
+- `app_router.dart` aggregates each feature’s `routes()` helper and guards anything under `/dashboard` or `/play` behind the auth redirect; add new screens via the feature router, not directly in `app_router.dart`.
+- Dashboard navigation uses a `ShellRoute` around `DashboardShell`; switch tabs with `context.go('/dashboard/<tab>')` so the shell keeps `selectedIndex` accurate.
+- Pass per-screen data through query parameters (e.g. `context.go('/score?score=$score&levelId=$levelId')`) and read them via `state.uri.queryParameters`—never rely on global singletons.
+- Riverpod 3 is standard: register listeners in `initState` with `ref.listenManual` and dispose the subscription; async controllers extend `AsyncNotifier` (`AuthController`, `ProfileController`) and expose loading/error state through `AsyncValue`.
 
-## UI system
-- Typography funnels through `CustomText` + `CustomTextType`, backed by tokens in `lib/shared/tokens/typography.dart`; avoid raw `TextStyle` literals.
-- Buttons follow `ActionButton`/`ButtonType`; text fields wrap `CustomTextField` with the `TextFieldType` backgrounds.
-- Colours must come from `AppColors` (`lib/shared/tokens/colors.dart`) to keep contrast consistent across dark surfaces.
+## Data flow & Firebase usage
+- Auth: `FirebaseAuthRepository` seeds Firestore via `AuthNetworkService.createUserProfile` and `createUserLevelDataBatch`; always throw domain-specific `AuthFailure` variants instead of raw Firebase exceptions.
+- Home: `HomeNetworkService` pulls `sections`, `levels`, and per-user `levelData`; `homeLevelsProvider` merges raw Firestore documents with user progress (defaulting `level_1` to available).
+- Profile: `ProfileNetworkService` wraps Firestore updates, password changes, Cloudinary uploads, and account deletion. Use the `profileControllerProvider` helpers so `currentUserProvider` invalidation stays consistent.
+- Leaderboard: `leaderboardProvider` reads `users` ordered by `totalScore`; refresh it with `ref.invalidate` after score mutations.
 
-## Gameplay flow
-- `PlayPage` owns question state, scoring, and YOLO flags; always call `_resetQuestionState()` before loading a new prompt.
-- Question content is static for now via `StaticQuestionsService` (`features/play/data`); keep enums in `QuestionType` and JSON helpers in sync when adding variants.
-- Rendering splits into `PlayTypeOne/Two/ThreePage`—respect their callbacks (`onAnswerSelected`, `onImageChanged`) when composing new flows.
-- Score transitions execute `context.go('/score?score=$score&levelId=$levelId')`; percent-encode parameters that may include spaces.
+## Play feature specifics
+- `PlayPage` coordinates question state, scores, and camera handoffs; call its `_resetQuestionState()` before loading a new prompt or swapping levels.
+- Questions are presently static from `StaticQuestionsService`; keep `QuestionType`, JSON helpers, and the static seeds in sync when adding new content or migrating to Firestore.
+- Camera handoffs: `PlayTypeThreePage` pushes `PlayRoutes.cameraName` and expects a non-null image file path before invoking `_handleGestureImageChanged`.
+- YOLO/TFLite integration lives in `features/play/data/services/yolo_service.dart`; call `init()` once per app lifetime and `dispose()` in tests to release interpreters.
 
-## Camera & ML integrations
-- `PlayTypeThreePage` launches the camera with `context.pushNamed(PlayRoutes.cameraName)` and expects a filesystem path string back; null-check before forwarding to `_handleGestureImageChanged`.
-- `CameraPage` manages `camera` + `permission_handler` lifecycles using `WidgetsBindingObserver`; preserve `didChangeAppLifecycleState` hooks to avoid preview crashes on resume.
-- `YoloService` (singleton, `features/play/data/services/yolo_service.dart`) loads `assets/models/sibi.tflite` + `labels.txt`. Call `init()` once, reuse the instance, and `dispose()` in tests to release TFLite interpreters.
+## Shared UI system
+- Typography flows through `CustomText` and tokens in `shared/tokens/typography.dart`; avoid raw `TextStyle` literals.
+- Colors are centralized in `shared/tokens/colors.dart`; new widgets should inherit `AppColors` and the `buildDarkTheme()` palette.
+- Buttons/text-fields use `ActionButton`, `CustomTextField`, and related enums—extend those widgets rather than rolling bespoke controls.
+- `LevelButton`/`ChatBubblePopup` rely on the shared `activePopupNotifier`; follow that notifier pattern for mutually-exclusive overlays.
 
-## Profile & shared patterns
-- Profile feature composes avatars with `ProfileAvatar` and uses shared spacing constants from `lib/shared/widgets/`; reuse tokens instead of hardcoding paddings.
-- `home` feature seeds level data and exposes a shared `activePopupNotifier` to ensure only one `LevelButton` popover is open—follow that notifier pattern for new popups.
-- `ProfilePage` reads the signed-in user via `currentUserProvider`; when augmenting profile data, extend the core `User` model + Firestore sync rather than hardcoding placeholders.
-- `features/profile/data/profile_network_service.dart` handles Firestore writes, password updates, and Cloudinary uploads using `SecretManager` + `CloudinaryService`.
-- Providers in `features/profile/presentation/providers/profile_providers.dart` expose `profileControllerProvider`; invalidating it refreshes Cloudinary credentials and ensures controller state resets between flows.
-- Edit/change profile UIs (`edit_profile_page.dart`, `change_password_page.dart`, `edit_profile_picture_page.dart`) call the controller for mutations and rely on its loading/error state for feedback.
-
-## Leaderboard data
-- `features/leaderboard/data/leaderboard_network_service.dart` fetches top users from Firestore (`users` collection ordered by `totalScore`).
-- Riverpod wiring in `leaderboard_providers.dart` exposes `leaderboardProvider`; invalidate it to refresh the board.
-- `LeaderboardPage` is a `ConsumerWidget` that renders loading/error/empty states based on that provider.
-
-## Firebase auth & routing
-- Firebase config lives in `lib/firebase_options.dart`; refresh it with `flutterfire configure` when environments change.
-- `features/auth/data/firebase_auth_repository.dart` wraps `FirebaseAuth`, seeds a Firestore profile + initial level progress through `AuthNetworkService`, and surfaces failures via `AuthFailure`—use the repository instead of hitting the SDK directly.
-- `features/auth/data/auth_network_service.dart` handles Firestore writes for new accounts (`users/{uid}` doc plus `levelData` seed); only auth code should depend on it.
-- Riverpod providers in `features/auth/presentation/providers/auth_providers.dart` expose `authStateProvider`, `currentUserProvider`, and `authController`; reuse them for UI work.
-- `LoginPage` and `SignupPage` already handle validation, loading, and error snackbars—tap into `authControllerProvider` when adding new auth surfaces.
-- `app_router.dart` redirects based on auth state; protected routes should live under `/dashboard` or `/play` prefixes so the guard remains effective.
-
-## Riverpod upgrade notes
-- Project runs on Riverpod 3; listeners in `initState` must use `ref.listenManual` and close the returned subscription in `dispose` (see login/signup/profile pages for the pattern).
-- `AuthController` extends `AsyncNotifier<void>`; wrap async mutations with `_run` to keep loading/error state consistent.
+## External services & secrets
+- Cloudinary uploads use `CloudinaryService`, which fetches credentials from `SecretManager` backed by Doppler; avoid hardcoding presets or keys and remember to call `ref.onDispose(service.dispose)` if you create new providers.
+- `SecretManager` caches credentials for one hour and falls back to `DOPPLER_SERVICE_TOKEN`; replace the temporary token before shipping and never log secret responses.
+- When adding new assets (models/images), declare them under `flutter.assets` in `pubspec.yaml`; TFLite models live in `assets/models/` and must match the associated `labels.txt`.
 
 ## Developer workflow
-- Typical loop: `flutter pub get` → `flutter analyze` → targeted `flutter test test/<path>.dart`; widget coverage lives under `test/features/**`.
-- Manual smoke: `flutter run -d <deviceId>`; camera + YOLO flows need a simulator/device with camera permission granted.
-- `App` accepts `home` and `navigatorKey` overrides, letting you mount feature widgets directly in tests without spinning up the router.
+- Typical loop: `flutter pub get` → `flutter analyze` → targeted `flutter test test/<path>.dart`; widget specs reside under `test/features/**`.
+- For manual smoke tests, run `flutter run -d <deviceId>`; camera/YOLO flows require granting camera permissions on the device or simulator.
+- The repo’s README is a Flutter scaffold—prefer the patterns documented here when onboarding new contributors.
 
-## Assets & dependencies
-- ML assets reside in `assets/models/`; if you swap `sibi.tflite`, update `pubspec.yaml` and keep `labels.txt` aligned.
-- Fonts (Inter family) already bundled under `assets/fonts/`; extend typography by adding tokens, not by embedding new font files.
-- Remember to update `pubspec.yaml` when adding new images, models, or JSON so Flutter’s asset bundler picks them up.
+## Patterns worth copying
+- Mirrored models (`cores/models/`) keep Flutter aligned with the iOS Swift client; extend these models instead of creating feature-specific duplicates.
+- Feature routers (`play_router.dart`, `dashboard_router.dart`, etc.) encapsulate navigation; expose new route names/paths as statics so other features can link to them without string literals.
+- In async controllers (`ProfileController._execute`), set `state = const AsyncLoading()` before awaiting mutations and surface errors via `AsyncError` so UIs can respond consistently.

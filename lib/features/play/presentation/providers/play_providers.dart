@@ -47,14 +47,56 @@ class PlayProgressController extends AsyncNotifier<void> {
   Future<void> updateProgress({
     required String userId,
     required String levelId,
-    required UserLevelData progress,
+    required int score,
+    home_level.Level? level,
   }) async {
     state = const AsyncLoading();
     try {
+      home_level.Level? resolvedLevel = level;
+
+      if (resolvedLevel == null) {
+        try {
+          resolvedLevel = await _service.fetchLevel(levelId: levelId);
+        } catch (_) {
+          resolvedLevel = null;
+        }
+      }
+
+      final threshold = resolvedLevel?.minScore ?? 0;
+      final hasClearedLevel = score >= threshold;
+
+      final currentProgress = UserLevelData(
+        status: hasClearedLevel
+            ? UserLevelStatus.completed
+            : UserLevelStatus.available,
+        bestScore: score,
+        lastAttempted: DateTime.now(),
+      );
+
+      ({String levelId, UserLevelData data})? unlockedLevel;
+
+      if (hasClearedLevel && resolvedLevel != null) {
+        final nextLevel = await _service.fetchNextLevel(
+          sectionId: resolvedLevel.sectionId,
+          currentNumber: resolvedLevel.number,
+        );
+
+        if (nextLevel != null) {
+          unlockedLevel = (
+            levelId: nextLevel.id,
+            data: const UserLevelData(
+              status: UserLevelStatus.available,
+              bestScore: 0,
+            ),
+          );
+        }
+      }
+
       await _service.updateUserLevelData(
         userId: userId,
         levelId: levelId,
-        userLevelData: progress,
+        userLevelData: currentProgress,
+        unlockedLevel: unlockedLevel,
       );
       state = const AsyncData(null);
     } catch (error, stackTrace) {
