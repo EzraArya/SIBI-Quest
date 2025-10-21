@@ -43,6 +43,10 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   @override
   void initState() {
     super.initState();
+    
+    // Add listener to detect and fix Android autofill concatenation bug
+    _emailController.addListener(_sanitizeEmailField);
+    
     _authListener = ref.listenManual<AsyncValue<void>>(authControllerProvider, (
       previous,
       next,
@@ -68,6 +72,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
 
   @override
   void dispose() {
+    _emailController.removeListener(_sanitizeEmailField);
     _authListener.close();
     _ageController.dispose();
     _firstNameController.dispose();
@@ -77,6 +82,24 @@ class _SignupPageState extends ConsumerState<SignupPage> {
     _confirmPasswordController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _sanitizeEmailField() {
+    final email = _emailController.text;
+    final password = _passwordController.text;
+    
+    // Remove password if concatenated at the end (Android autofill bug)
+    if (password.isNotEmpty && 
+        email.endsWith(password) && 
+        email.length > password.length) {
+      final cleanEmail = email.substring(0, email.length - password.length);
+      if (cleanEmail.contains('@')) {
+        _emailController.value = _emailController.value.copyWith(
+          text: cleanEmail,
+          selection: TextSelection.collapsed(offset: cleanEmail.length),
+        );
+      }
+    }
   }
 
   bool _validateCurrentPage() {
@@ -222,6 +245,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
           hintText: 'Email',
           errorText: _emailError,
           keyboardType: TextInputType.emailAddress,
+          autofillHints: null,
         ),
       ],
     ),
@@ -240,6 +264,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
           hintText: 'Password',
           obscureText: true,
           errorText: _passwordError,
+          autofillHints: null,
         ),
         const SizedBox(height: 16),
         CustomTextField(
@@ -247,6 +272,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
           hintText: 'Confirm Password',
           obscureText: true,
           errorText: _confirmPasswordError,
+          autofillHints: null,
         ),
       ],
     ),
@@ -337,10 +363,22 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                         if (authState.isLoading) {
                           return;
                         }
+                        
+                        // Sanitize email to prevent Android autofill concatenation bug
+                        String email = _emailController.text.trim();
+                        final password = _passwordController.text;
+                        
+                        if (password.isNotEmpty && 
+                            email.endsWith(password) && 
+                            email.length > password.length &&
+                            email.substring(0, email.length - password.length).contains('@')) {
+                          email = email.substring(0, email.length - password.length);
+                        }
+                        
                         final user = core.User(
                           firstName: _firstNameController.text.trim(),
                           lastName: _lastNameController.text.trim(),
-                          email: _emailController.text.trim(),
+                          email: email,
                           age: int.tryParse(_ageController.text.trim()) ?? 0,
                           currentLevel: null,
                           image: null,
@@ -350,7 +388,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                             .read(authControllerProvider.notifier)
                             .signUp(
                               user: user,
-                              password: _passwordController.text,
+                              password: password,
                             );
                       }
                     }

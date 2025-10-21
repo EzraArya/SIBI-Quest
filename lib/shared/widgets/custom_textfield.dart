@@ -15,6 +15,7 @@ class CustomTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final int? maxLines;
   final String? errorText;
+  final Iterable<String>? autofillHints;
 
   const CustomTextField({
     super.key,
@@ -29,6 +30,7 @@ class CustomTextField extends StatelessWidget {
     this.textInputAction,
     this.maxLines = 1,
     this.errorText,
+    this.autofillHints,
   });
 
   Color _bg() {
@@ -73,6 +75,7 @@ class CustomTextField extends StatelessWidget {
       maxLines: maxLines,
       obscureText: obscureText,
       textInputAction: textInputAction,
+      autofillHints: autofillHints,
       style: TextStyle(color: fg),
       decoration: InputDecoration(
         isDense: true,
