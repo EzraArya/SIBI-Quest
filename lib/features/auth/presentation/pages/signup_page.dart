@@ -43,10 +43,10 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   @override
   void initState() {
     super.initState();
-    
+
     // Add listener to detect and fix Android autofill concatenation bug
     _emailController.addListener(_sanitizeEmailField);
-    
+
     _authListener = ref.listenManual<AsyncValue<void>>(authControllerProvider, (
       previous,
       next,
@@ -87,10 +87,10 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   void _sanitizeEmailField() {
     final email = _emailController.text;
     final password = _passwordController.text;
-    
+
     // Remove password if concatenated at the end (Android autofill bug)
-    if (password.isNotEmpty && 
-        email.endsWith(password) && 
+    if (password.isNotEmpty &&
+        email.endsWith(password) &&
         email.length > password.length) {
       final cleanEmail = email.substring(0, email.length - password.length);
       if (cleanEmail.contains('@')) {
@@ -363,18 +363,23 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                         if (authState.isLoading) {
                           return;
                         }
-                        
+
                         // Sanitize email to prevent Android autofill concatenation bug
                         String email = _emailController.text.trim();
                         final password = _passwordController.text;
-                        
-                        if (password.isNotEmpty && 
-                            email.endsWith(password) && 
+
+                        if (password.isNotEmpty &&
+                            email.endsWith(password) &&
                             email.length > password.length &&
-                            email.substring(0, email.length - password.length).contains('@')) {
-                          email = email.substring(0, email.length - password.length);
+                            email
+                                .substring(0, email.length - password.length)
+                                .contains('@')) {
+                          email = email.substring(
+                            0,
+                            email.length - password.length,
+                          );
                         }
-                        
+
                         final user = core.User(
                           firstName: _firstNameController.text.trim(),
                           lastName: _lastNameController.text.trim(),
@@ -386,10 +391,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
 
                         ref
                             .read(authControllerProvider.notifier)
-                            .signUp(
-                              user: user,
-                              password: password,
-                            );
+                            .signUp(user: user, password: password);
                       }
                     }
                   },
