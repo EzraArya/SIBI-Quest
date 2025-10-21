@@ -22,14 +22,12 @@ class CloudinaryService {
 
   /// Uploads a profile image to Cloudinary and returns the secure URL.
   ///
-  /// The upload leverages an unsigned preset fetched from Doppler, mirroring
-  /// the `profile_picture` preset used on iOS. The image [bytes] must represent
-  /// a valid JPEG/PNG payload.
+  /// The upload leverages credentials fetched from Doppler. The image [bytes]
+  /// must represent a valid JPEG/PNG payload.
   Future<String> uploadProfileImage({
     required Uint8List bytes,
     required String userId,
     String? fileName,
-    String? uploadPreset,
     Map<String, String>? metadata,
   }) async {
     if (bytes.isEmpty) {
@@ -37,14 +35,9 @@ class CloudinaryService {
     }
 
     final config = await _secretManager.getCloudinaryConfig();
-    final preset = (uploadPreset ?? config.uploadPreset).trim();
-    if (preset.isEmpty) {
-      throw const CloudinaryException.missingUploadPreset();
-    }
 
     final uri = Uri.parse('$_cloudinaryHost/${config.cloudName}/image/upload');
     final request = http.MultipartRequest('POST', uri)
-      ..fields['upload_preset'] = preset
       ..fields['folder'] = '$_defaultFolder/$userId'
       ..fields['public_id'] = userId
       ..files.add(
@@ -114,9 +107,6 @@ class CloudinaryException implements Exception {
 
   const CloudinaryException.invalidImage()
     : this._('Provided image bytes are empty.');
-
-  const CloudinaryException.missingUploadPreset()
-    : this._('Cloudinary upload preset is missing or empty.');
 
   const CloudinaryException.invalidResponse()
     : this._('Cloudinary returned an unexpected response payload.');
