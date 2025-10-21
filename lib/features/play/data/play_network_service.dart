@@ -131,10 +131,15 @@ class PlayNetworkService {
       final batch = _firestore.batch();
       batch.set(docRef, payload, SetOptions(merge: true));
 
-      int scoreDelta = 0;
       final bool levelCleared = merged.status == UserLevelStatus.completed;
-      if (levelCleared && merged.bestScore > (current?.bestScore ?? 0)) {
-        scoreDelta = merged.bestScore - (current?.bestScore ?? 0);
+      final int previousCompletedScore =
+          current?.status == UserLevelStatus.completed
+              ? (current?.bestScore ?? 0)
+              : 0;
+
+      int scoreDelta = 0;
+      if (levelCleared && merged.bestScore > previousCompletedScore) {
+        scoreDelta = merged.bestScore - previousCompletedScore;
       }
 
       if (unlockedLevel != null) {

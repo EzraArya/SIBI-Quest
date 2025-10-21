@@ -130,6 +130,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 hintText: 'Email',
                 keyboardType: TextInputType.emailAddress,
                 errorText: _emailError,
+                autofillHints: const [AutofillHints.email],
                 onChanged: (_) {
                   if (_emailError != null) {
                     setState(() {
@@ -144,6 +145,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 hintText: 'Password',
                 obscureText: true,
                 errorText: _passwordError,
+                autofillHints: const [AutofillHints.password],
                 onChanged: (_) {
                   if (_passwordError != null) {
                     setState(() {

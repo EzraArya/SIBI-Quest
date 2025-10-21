@@ -95,9 +95,8 @@ class SecretManager {
     final cloudName = readSecret('CLOUDINARY_CLOUD_NAME');
     final apiKey = readSecret('CLOUDINARY_API_KEY');
     final apiSecret = readSecret('CLOUDINARY_API_SECRET');
-    final uploadPreset = readSecret('CLOUDINARY_UPLOAD_PRESET');
 
-    if ([cloudName, apiKey, uploadPreset].any((value) => value == null)) {
+    if ([cloudName, apiKey].any((value) => value == null)) {
       throw const SecretManagerException.missingSecrets();
     }
 
@@ -105,7 +104,6 @@ class SecretManager {
       cloudName: cloudName!,
       apiKey: apiKey!,
       apiSecret: apiSecret,
-      uploadPreset: uploadPreset!,
     );
 
     _cachedConfig = config;
@@ -118,7 +116,7 @@ class SecretManager {
 // being wired up. Replace this with environment-driven configuration before
 // shipping to production.
 const String _fallbackDopplerServiceToken =
-    'dp.st.prd.C1yp7fWBN1q5OS0WS9qRZcp36Jbqhl9941rftgFKdqS';
+    'dp.st.prd.F6bgWVWoAushUGhpPsJJCpUrj3XDRKLl9FRY2iP5XfP';
 
 String _resolveToken(String? override) {
   final overrideToken = override?.trim();
@@ -141,13 +139,11 @@ class CloudinaryConfig {
     required this.cloudName,
     required this.apiKey,
     this.apiSecret,
-    required this.uploadPreset,
   });
 
   final String cloudName;
   final String apiKey;
   final String? apiSecret;
-  final String uploadPreset;
 }
 
 /// Domain-specific failures thrown by [SecretManager].
