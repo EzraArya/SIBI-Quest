@@ -9,7 +9,7 @@ import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/features/home/domain/models/level.dart'
     as home_level;
 import 'package:sibi_quest/features/play/domain/models/questions.dart';
-import 'package:sibi_quest/features/play/domain/services/yolo_service.dart';
+import 'package:sibi_quest/features/play/domain/services/classifier_service.dart';
 import 'package:sibi_quest/features/play/data/static_questions_service.dart';
 import 'package:sibi_quest/features/play/presentation/providers/play_providers.dart';
 import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
@@ -28,7 +28,7 @@ class PlayPage extends ConsumerStatefulWidget {
 }
 
 class _PlayPageState extends ConsumerState<PlayPage> {
-  final YoloService _yoloService = YoloService();
+  final ClassifierService _classifierService = ClassifierService();
 
   // Game state
   List<Question> questions = [];
@@ -70,7 +70,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
   void initState() {
     super.initState();
     unawaited(_loadGameData());
-    _initializeYolo();
+    _initializeClassifier();
   }
 
   Future<void> _loadGameData() async {
@@ -177,11 +177,11 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     });
   }
 
-  Future<void> _initializeYolo() async {
+  Future<void> _initializeClassifier() async {
     try {
-      await _yoloService.init();
+      await _classifierService.init();
     } catch (error, stackTrace) {
-      debugPrint('YOLO initialization error: $error\n$stackTrace');
+      debugPrint('Classifier initialization error: $error\n$stackTrace');
     }
   }
 
@@ -202,7 +202,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     }
 
     try {
-      final result = await _yoloService.predict(imagePath);
+      final result = await _classifierService.predict(imagePath);
       if (!mounted) return;
 
       if (result.isFallback) {
@@ -217,7 +217,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         return;
       }
 
-      final rawDetectedLabel = result.gestureLabel.trim();
+      final rawDetectedLabel = result.label.trim();
       final expectedLabel = (currentQuestion?.content.prompt ?? '').trim();
 
       final detectedLabel = rawDetectedLabel.isEmpty
