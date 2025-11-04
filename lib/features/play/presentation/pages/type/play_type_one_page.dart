@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:sibi_quest/shared/utils/image_url_validator.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 
 class PlayTypeOnePage extends StatelessWidget {
-  final String promptImage;
+  final String? promptImage;
   final List<String> answerOptions;
   final ValueChanged<int> onAnswerSelected;
   final int? selectedIndex;
@@ -37,37 +38,7 @@ class PlayTypeOnePage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 24),
-        Center(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              width: 96,
-              height: 96,
-              color: AppColors.muted,
-              child: Image.network(
-                promptImage,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, _) => Icon(
-                  Icons.broken_image,
-                  color: AppColors.secondary,
-                  size: 36,
-                ),
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) {
-                    return child;
-                  }
-                  return const Center(
-                    child: SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
+        Center(child: _PromptImageTile(imageUrl: promptImage)),
         const SizedBox(height: 36),
         Expanded(child: _buildAnswerGrid()),
       ],
@@ -93,12 +64,21 @@ class PlayTypeOnePage extends StatelessWidget {
             duration: const Duration(milliseconds: 120),
             curve: Curves.easeOut,
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary : AppColors.background,
+              color: isSelected ? AppColors.primary : AppColors.textbox,
               border: Border.all(
-                color: isSelected ? AppColors.primary : AppColors.line,
+                color: isSelected ? AppColors.accent : AppColors.line,
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(12),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.accent.withValues(alpha: 0.35),
+                        blurRadius: 14,
+                        offset: const Offset(0, 8),
+                      ),
+                    ]
+                  : const [],
             ),
             child: Center(
               child: CustomText(
@@ -110,6 +90,54 @@ class PlayTypeOnePage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _PromptImageTile extends StatelessWidget {
+  const _PromptImageTile({this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasValidUrl = isValidNetworkImageUrl(imageUrl);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: 96,
+          height: 96,
+          color: AppColors.muted,
+          child: hasValidUrl
+              ? Image.network(
+                  key: ValueKey(imageUrl),
+                  imageUrl!,
+                  fit: BoxFit.cover,
+                errorBuilder: (context, error, _) => Icon(
+                  Icons.broken_image,
+                  color: AppColors.secondary,
+                  size: 36,
+                ),
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) {
+                    return child;
+                  }
+                  return const Center(
+                    child: SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
+              )
+            : Icon(
+                Icons.image_not_supported_rounded,
+                color: AppColors.secondary,
+                size: 36,
+              ),
+      ),
     );
   }
 }
