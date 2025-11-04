@@ -17,6 +17,7 @@ import 'package:sibi_quest/features/play/presentation/pages/type/play_type_one_p
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_two_page.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_three_page.dart';
 import 'package:sibi_quest/shared/widgets/answer_feedback_section.dart';
+import 'package:sibi_quest/shared/utils/image_url_validator.dart';
 
 class PlayPage extends ConsumerStatefulWidget {
   final String? levelId;
@@ -274,7 +275,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         isAnswerCorrect = isCorrect;
         isVerified = true;
         if (isCorrect) {
-          score += 50; // Add points for correct answer
+          score += 10; // Add points for correct answer
         }
       });
       if (!isCorrect) {
@@ -513,8 +514,9 @@ class _PlayPageState extends ConsumerState<PlayPage> {
   Widget _buildQuestionContent() {
     switch (currentQuestion!.type) {
       case QuestionType.selectAlphabet:
+        final promptImage = _resolvePromptImage(currentQuestion!);
         return PlayTypeOnePage(
-          promptImage: currentQuestion!.content.prompt,
+          promptImage: promptImage,
           answerOptions: currentQuestion!.content.answers
               .map((a) => a.value)
               .toList(),
@@ -545,6 +547,31 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String? _resolvePromptImage(Question question) {
+    final content = question.content;
+    final candidates = <String?>[];
+
+    final exampleImage = content.exampleImage?.trim();
+    if (exampleImage != null && exampleImage.isNotEmpty) {
+      candidates.add(exampleImage);
+    }
+
+    final prompt = content.prompt.trim();
+    if (content.isPromptImage) {
+      candidates.add(prompt);
+    } else if (isValidNetworkImageUrl(prompt)) {
+      candidates.add(prompt);
+    }
+
+    for (final candidate in candidates) {
+      if (isValidNetworkImageUrl(candidate)) {
+        return candidate;
+      }
+    }
+
+    return null;
   }
 }
 
