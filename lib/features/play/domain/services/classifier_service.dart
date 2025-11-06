@@ -53,10 +53,7 @@ class ClassifierOptions {
 
 /// Prediction result produced by [ClassifierService].
 class ClassificationResult {
-  const ClassificationResult({
-    required this.label,
-    required this.confidence,
-  });
+  const ClassificationResult({required this.label, required this.confidence});
 
   final String label;
   final double confidence;
@@ -166,7 +163,9 @@ class ClassifierService {
       return ClassificationResult.fallback();
     }
 
-    if (!_isInitialized || _interpreter == null || _isolateInterpreter == null) {
+    if (!_isInitialized ||
+        _interpreter == null ||
+        _isolateInterpreter == null) {
       return ClassificationResult.fallback();
     }
 
@@ -199,10 +198,9 @@ class ClassifierService {
     final outputs = _allocateOutputTensors();
     final start = DateTime.now();
     try {
-      await _isolateInterpreter!.runForMultipleInputs(
-        <Object>[processedInputData],
-        outputs.map,
-      );
+      await _isolateInterpreter!.runForMultipleInputs(<Object>[
+        processedInputData,
+      ], outputs.map);
     } catch (error, stackTrace) {
       debugPrint('Classifier inference failed: $error\n$stackTrace');
       return ClassificationResult.fallback();
@@ -275,50 +273,72 @@ class ClassifierService {
 
   Future<void> _createInterpreter() async {
     Interpreter? interpreterForCleanup;
-    late final Interpreter interpreterInstance;
-    GpuDelegateV2? gpuDelegate;
+    Delegate? gpuDelegate;
 
     try {
+      // Log initialization start
+      debugPrint('🔧 Starting classifier initialization...');
+      debugPrint('📁 Model path: $_modelAssetPath');
+
+      Interpreter? interpreterInstance;
       final options = InterpreterOptions();
+
+      // Try GPU delegate with Metal for iOS
       try {
-        gpuDelegate = GpuDelegateV2();
+        debugPrint('🎮 Attempting GPU delegate initialization...');
+        gpuDelegate = GpuDelegateV2(
+          options: GpuDelegateOptionsV2(isPrecisionLossAllowed: false),
+        );
         options.addDelegate(gpuDelegate);
+        debugPrint('✅ GPU delegate created successfully');
       } catch (error) {
-        debugPrint('GPU delegate unavailable, falling back to CPU: $error');
+        debugPrint('⚠️ GPU delegate creation failed: $error');
         gpuDelegate = null;
       }
 
       try {
+        debugPrint('📦 Loading model from assets...');
         interpreterInstance = await Interpreter.fromAsset(
           _modelAssetPath,
           options: options,
         );
         interpreterForCleanup = interpreterInstance;
-        _gpuDelegate = gpuDelegate;
+        _gpuDelegate = gpuDelegate as GpuDelegateV2?;
+        debugPrint(
+          '✅ Interpreter created with ${gpuDelegate != null ? "GPU" : "CPU"}',
+        );
       } catch (error) {
-        debugPrint('Failed to create interpreter with GPU: $error');
+        debugPrint('❌ Failed to create interpreter with GPU: $error');
         gpuDelegate?.delete();
         gpuDelegate = null;
 
+        debugPrint('🔄 Retrying with CPU-only configuration...');
         final cpuOptions = InterpreterOptions();
         interpreterInstance = await Interpreter.fromAsset(
           _modelAssetPath,
           options: cpuOptions,
         );
         interpreterForCleanup = interpreterInstance;
+        debugPrint('✅ Interpreter created with CPU');
       }
+
+      _interpreter = interpreterInstance;
+      _inputShape = interpreterInstance.getInputTensor(0).shape;
+      debugPrint('📐 Input shape: $_inputShape');
+
+      debugPrint('🔀 Creating isolate interpreter...');
+      _isolateInterpreter = await IsolateInterpreter.create(
+        address: interpreterInstance.address,
+      );
+      debugPrint('✅ Isolate interpreter created successfully');
     } catch (error, stackTrace) {
-      debugPrint('Failed to initialize interpreter: $error\n$stackTrace');
+      debugPrint('💥 CRITICAL: Failed to initialize interpreter');
+      debugPrint('❌ Error: $error');
+      debugPrint('📍 Stack trace: $stackTrace');
       interpreterForCleanup?.close();
       gpuDelegate?.delete();
       rethrow;
     }
-
-    _interpreter = interpreterInstance;
-    _inputShape = interpreterInstance.getInputTensor(0).shape;
-    _isolateInterpreter = await IsolateInterpreter.create(
-      address: interpreterInstance.address,
-    );
   }
 
   Future<void> _performWarmUp() async {
