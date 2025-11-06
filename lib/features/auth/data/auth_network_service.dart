@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sibi_quest/cores/models/user.dart' as core;
 import 'package:sibi_quest/cores/models/user_level_data.dart';
 
@@ -63,125 +64,58 @@ class AuthNetworkService {
     await batch.commit();
   }
 
+  /// Builds the initial level data seed for a new user.
+  ///
+  /// Optimized to fetch only the first available level instead of all levels.
+  /// Uses targeted queries to reduce Firestore reads from ~700 to ~2 per sign-up.
+  ///
+  /// Returns a single-item list containing the first level marked as available.
+  /// All other levels will be created lazily as the user progresses.
   Future<List<({String levelId, UserLevelData data})>>
   buildInitialLevelDataSeed() async {
     try {
-      final sectionsSnapshot = await _firestore.collection('sections').get();
-      final levelsSnapshot = await _firestore.collection('levels').get();
+      // Fetch ONLY the first section (1 read)
+      final sectionsSnapshot = await _firestore
+          .collection('sections')
+          .orderBy('number')
+          .limit(1)
+          .get();
+
+      if (sectionsSnapshot.docs.isEmpty) {
+        return List.unmodifiable(_defaultLevelDataSeed);
+      }
+
+      final firstSectionId = sectionsSnapshot.docs.first.id;
+
+      // Fetch ONLY the first level of that section (1 read)
+      final levelsSnapshot = await _firestore
+          .collection('levels')
+          .where('sectionId', isEqualTo: firstSectionId)
+          .orderBy('number')
+          .limit(1)
+          .get();
 
       if (levelsSnapshot.docs.isEmpty) {
         return List.unmodifiable(_defaultLevelDataSeed);
       }
 
-      final sortedSections = sectionsSnapshot.docs
-          .map(
-            (doc) => (
-              id: doc.id,
-              number: (doc.data()['number'] as num?)?.toInt(),
-            ),
-          )
-          .toList()
-        ..sort(
-          (a, b) {
-            final aNumber = a.number;
-            final bNumber = b.number;
-            if (aNumber != null && bNumber != null) {
-              final compare = aNumber.compareTo(bNumber);
-              if (compare != 0) {
-                return compare;
-              }
-            } else if (aNumber != null) {
-              return -1;
-            } else if (bNumber != null) {
-              return 1;
-            }
-            return a.id.compareTo(b.id);
-          },
-        );
+      final firstLevelId = levelsSnapshot.docs.first.id;
 
-      final sectionOrder = <String, int>{
-        for (var index = 0; index < sortedSections.length; index++)
-          sortedSections[index].id: index,
-      };
-      final firstSectionId =
-          sortedSections.isNotEmpty ? sortedSections.first.id : null;
-
-      final docs = levelsSnapshot.docs
-          .map(
-            (doc) => (
-              id: doc.id,
-              number: (doc.data()['number'] as num?)?.toInt(),
-              sectionId: doc.data()['sectionId'] as String?,
-            ),
-          )
-          .toList()
-        ..sort(
-          (a, b) {
-            final aSectionIndex =
-                sectionOrder[a.sectionId] ?? sectionOrder.length;
-            final bSectionIndex =
-                sectionOrder[b.sectionId] ?? sectionOrder.length;
-            final sectionCompare = aSectionIndex.compareTo(bSectionIndex);
-            if (sectionCompare != 0) {
-              return sectionCompare;
-            }
-
-            final aNumber = a.number;
-            final bNumber = b.number;
-            if (aNumber != null && bNumber != null) {
-              final compare = aNumber.compareTo(bNumber);
-              if (compare != 0) {
-                return compare;
-              }
-            } else if (aNumber != null) {
-              return -1;
-            } else if (bNumber != null) {
-              return 1;
-            }
-            return a.id.compareTo(b.id);
-          },
-        );
-
-      final seeds = <({String levelId, UserLevelData data})>[];
-      var availableAssigned = false;
-
-      for (final doc in docs) {
-        final isFirstLevelOfFirstSection = firstSectionId != null &&
-            doc.sectionId == firstSectionId &&
-            (doc.number == 1 || doc.number == null);
-
-        final shouldMarkAvailable =
-            !availableAssigned && (isFirstLevelOfFirstSection || firstSectionId == null);
-
-        final status = shouldMarkAvailable
-            ? UserLevelStatus.available
-            : UserLevelStatus.locked;
-
-        if (shouldMarkAvailable) {
-          availableAssigned = true;
-        }
-
-        seeds.add((
-          levelId: doc.id,
-          data: UserLevelData(
-            status: status,
-            bestScore: 0,
-          ),
-        ));
-      }
-
-      if (seeds.isNotEmpty && !availableAssigned) {
-        final first = seeds.first;
-        seeds[0] = (
-          levelId: first.levelId,
-          data: first.data.copyWith(status: UserLevelStatus.available),
-        );
-      }
-
-      return List.unmodifiable(seeds);
-    } on FirebaseException {
+      // Return only the first level as available
+      // Other levels will be created when unlocked during gameplay
+      return List.unmodifiable([
+        (
+          levelId: firstLevelId,
+          data: UserLevelData(status: UserLevelStatus.available, bestScore: 0),
+        ),
+      ]);
+    } on FirebaseException catch (error) {
+      // Log error for debugging but don't throw
+      // Fallback to default seed ensures sign-up always succeeds
+      debugPrint('Failed to fetch initial level seed: ${error.message}');
       return List.unmodifiable(_defaultLevelDataSeed);
-    } catch (_) {
+    } catch (error) {
+      debugPrint('Unexpected error in buildInitialLevelDataSeed: $error');
       return List.unmodifiable(_defaultLevelDataSeed);
     }
   }
