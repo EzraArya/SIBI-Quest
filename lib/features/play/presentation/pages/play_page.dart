@@ -225,11 +225,11 @@ class _PlayPageState extends ConsumerState<PlayPage> {
           ? 'Unknown'
           : rawDetectedLabel;
 
-      final matchesPrompt =
-          detectedLabel.isNotEmpty &&
-          expectedLabel.isNotEmpty &&
-          detectedLabel.toUpperCase() == expectedLabel.toUpperCase() &&
-          result.confidence >= 0.3;
+      final matchesPrompt = _isGestureMatch(
+        detectedLabel: detectedLabel,
+        expectedLabel: expectedLabel,
+        confidence: result.confidence,
+      );
 
       setState(() {
         _pendingGestureMatch = matchesPrompt;
@@ -345,6 +345,48 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     return isAnswerCorrect == true
         ? AnswerFeedbackState.correct
         : AnswerFeedbackState.incorrect;
+  }
+
+  /// Check if detected gesture matches expected label.
+  /// Handles special cases: O/0 → O_0, V/2 → V_2
+  bool _isGestureMatch({
+    required String detectedLabel,
+    required String expectedLabel,
+    required double confidence,
+  }) {
+    if (detectedLabel.isEmpty || expectedLabel.isEmpty) {
+      return false;
+    }
+
+    if (confidence < 0.3) {
+      return false;
+    }
+
+    final detected = detectedLabel.toUpperCase().trim();
+    final expected = expectedLabel.toUpperCase().trim();
+
+    // Direct match
+    if (detected == expected) {
+      return true;
+    }
+
+    // Handle O/0 → O_0
+    if ((expected == 'O' || expected == '0') && detected == 'O_0') {
+      return true;
+    }
+    if (expected == 'O_0' && (detected == 'O' || detected == '0')) {
+      return true;
+    }
+
+    // Handle V/2 → V_2
+    if ((expected == 'V' || expected == '2') && detected == 'V_2') {
+      return true;
+    }
+    if (expected == 'V_2' && (detected == 'V' || detected == '2')) {
+      return true;
+    }
+
+    return false;
   }
 
   String _getButtonText() {
