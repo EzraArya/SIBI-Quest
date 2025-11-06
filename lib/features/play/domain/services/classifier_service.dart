@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -82,7 +81,7 @@ class ClassifierService {
     return _instance;
   }
 
-  static const _modelAssetPath = 'assets/models/sibi-c.tflite';
+  static const _modelAssetPath = 'assets/models/sibi.tflite';
   static const _labelsAssetPath = 'assets/models/labels.txt';
 
   Interpreter? _interpreter;

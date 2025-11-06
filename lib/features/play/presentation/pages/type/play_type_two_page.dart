@@ -70,9 +70,11 @@ class PlayTypeTwoPage extends StatelessWidget {
             duration: const Duration(milliseconds: 120),
             curve: Curves.easeOut,
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary : AppColors.background,
+              color: isSelected
+                  ? AppColors.complementary
+                  : AppColors.background,
               border: Border.all(
-                color: isSelected ? AppColors.primary : AppColors.line,
+                color: isSelected ? AppColors.complementary : AppColors.line,
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(12),

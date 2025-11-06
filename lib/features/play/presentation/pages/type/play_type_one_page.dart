@@ -74,7 +74,7 @@ class PlayTypeOnePage extends StatelessWidget {
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: AppColors.accent.withValues(alpha: 0.35),
+                        color: AppColors.complementary.withValues(alpha: 0.35),
                         blurRadius: 14,
                         offset: const Offset(0, 8),
                       ),

@@ -31,11 +31,27 @@ android {
         versionName = flutter.versionName
     }
 
+    // Prevent compression of TFLite models for proper memory mapping
+    aaptOptions {
+        noCompress("tflite")
+        noCompress("txt")
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            
+            // Enable code shrinking and obfuscation
+            isMinifyEnabled = true
+            isShrinkResources = true
+            
+            // Apply ProGuard rules for TensorFlow Lite
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
