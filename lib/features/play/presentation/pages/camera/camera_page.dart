@@ -155,7 +155,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: CustomText(
-              text: 'Capture failed: $e',
+              text: 'Gagal mengambil gambar: $e',
               type: CustomTextType.body,
               color: Colors.white,
             ),

@@ -22,14 +22,14 @@ class WelcomePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const CustomText(
-                  text: 'Already have an account?',
+                  text: 'Sudah punya akun?',
                   type: CustomTextType.body,
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ActionButton(
-                    label: 'Log In',
+                    label: 'Masuk',
                     type: ButtonType.primary,
                     onPressed: () {
                       context.go('/login');
@@ -44,14 +44,14 @@ class WelcomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const CustomText(
-                  text: 'New to SIBI Quest?',
+                  text: 'Baru di SIBI Quest?',
                   type: CustomTextType.body,
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: ActionButton(
-                    label: 'Get Started',
+                    label: 'Daftar Sekarang',
                     type: ButtonType.secondary,
                     onPressed: () {
                       context.go('/onboarding');

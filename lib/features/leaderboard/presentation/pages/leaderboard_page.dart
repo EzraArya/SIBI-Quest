@@ -233,13 +233,13 @@ class _LeaderboardEmptyState extends StatelessWidget {
             ),
             SizedBox(height: 16),
             CustomText(
-              text: 'Leaderboard is empty',
+              text: 'Papan peringkat masih kosong',
               type: CustomTextType.title,
               color: AppColors.text,
             ),
             SizedBox(height: 8),
             CustomText(
-              text: 'Play a few levels to start competing with friends!',
+              text: 'Mainkan beberapa level untuk mulai bersaing dengan teman-temanmu!',
               type: CustomTextType.body,
               color: AppColors.placeholder,
               textAlign: TextAlign.center,

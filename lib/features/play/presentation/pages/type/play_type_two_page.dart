@@ -25,13 +25,19 @@ class PlayTypeTwoPage extends StatelessWidget {
         Row(
           children: const [
             CustomText(
-              text: "Select the correct",
+              text: "Pilih",
               type: CustomTextType.title,
               color: AppColors.text,
             ),
             SizedBox(width: 8),
             CustomText(
               text: "Gesture",
+              type: CustomTextType.title,
+              color: AppColors.primary,
+            ),
+            SizedBox(width: 8),
+            CustomText(
+              text: "Yang Sesuai",
               type: CustomTextType.title,
               color: AppColors.primary,
             ),

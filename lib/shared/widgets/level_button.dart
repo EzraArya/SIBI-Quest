@@ -32,11 +32,11 @@ enum LevelButtonStyle {
   String get popupSubtitle {
     switch (this) {
       case LevelButtonStyle.defaultStyle:
-        return "Complete this level to earn rewards";
+        return "Selesaikan level ini untuk mendapatkan hadiah";
       case LevelButtonStyle.completed:
-        return "You have completed this level";
+        return "Kamu telah menyelesaikan level ini";
       case LevelButtonStyle.locked:
-        return "This level is locked";
+        return "Level ini masih terkunci";
     }
   }
 

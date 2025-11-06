@@ -391,21 +391,21 @@ class _PlayPageState extends ConsumerState<PlayPage> {
 
   String _getButtonText() {
     if (!isVerified) {
-      return 'Submit Answer';
+      return 'Kirim Jawaban';
     } else if (isAnswerCorrect == true) {
       if (currentQuestionIndex < questions.length - 1) {
-        return 'Next Question';
+        return 'Pertanyaan Selanjutnya';
       } else {
-        return 'Finish Game';
+        return 'Selesaikan Permainan';
       }
     } else {
       final remaining = _maxAttempts - attemptsUsed;
       if (remaining > 0) {
-        return 'Try Again';
+        return 'Coba Lagi';
       }
       return currentQuestionIndex < questions.length - 1
-          ? 'Continue'
-          : 'Finish Game';
+          ? 'Lanjutkan'
+          : 'Selesaikan Permainan';
     }
   }
 
@@ -413,10 +413,9 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     if (isVerified && isAnswerCorrect != true) {
       final remaining = _maxAttempts - attemptsUsed;
       if (remaining > 0) {
-        final suffix = remaining == 1 ? '' : 's';
-        return '$remaining attempt$suffix remaining';
+        return '$remaining kesempatan tersisa';
       }
-      return 'No attempts remaining.';
+      return 'Tidak ada kesempatan tersisa.';
     }
     return null;
   }
@@ -430,7 +429,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             CustomText(
-              text: 'Game Settings',
+              text: 'Pengaturan Permainan',
               type: CustomTextType.title,
               color: AppColors.text,
             ),
@@ -438,7 +437,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
             ListTile(
               leading: Icon(Icons.home, color: AppColors.primary),
               title: const CustomText(
-                text: 'Return to Home',
+                text: 'Kembali ke Beranda',
                 type: CustomTextType.body,
               ),
               onTap: () {
@@ -449,7 +448,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
             ListTile(
               leading: Icon(Icons.refresh, color: AppColors.primary),
               title: const CustomText(
-                text: 'Restart Level',
+                text: 'Ulangi Level',
                 type: CustomTextType.body,
               ),
               onTap: () {
@@ -547,7 +546,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('We\'ll retry syncing your progress later.'),
+          content: Text('Kami akan mencoba menyinkronkan progresmu nanti.'),
         ),
       );
     }

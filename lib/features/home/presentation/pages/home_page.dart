@@ -78,7 +78,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       if (rawName.isNotEmpty) {
         return rawName;
       }
-      return 'Explorer';
+      return 'Penjelajah';
     }();
 
     return Scaffold(
@@ -92,7 +92,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Row(
                 children: [
                   const CustomText(
-                    text: 'Welcome, ',
+                    text: 'Selamat Datang, ',
                     type: CustomTextType.title,
                     color: AppColors.text,
                   ),
