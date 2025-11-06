@@ -54,6 +54,7 @@ enum LevelButtonStyle {
 
 class LevelButton extends StatelessWidget {
   final String level;
+  final String identifier;
   final LevelButtonStyle style;
   final String title;
   final String subtitle;
@@ -63,19 +64,36 @@ class LevelButton extends StatelessWidget {
   const LevelButton({
     super.key,
     required this.level,
+    String? identifier,
     this.style = LevelButtonStyle.defaultStyle,
     this.title = "Level",
     this.subtitle = "Complete this level",
     required this.activePopupNotifier,
     this.action,
-  });
+  }) : identifier = identifier ?? level;
 
   String get _effectiveSubtitle =>
       style == LevelButtonStyle.defaultStyle ? subtitle : style.popupSubtitle;
 
   void _onTap() {
-    activePopupNotifier.value =
-        activePopupNotifier.value == level ? null : level;
+    final isActive = activePopupNotifier.value == identifier;
+    if (isActive) {
+      if (style == LevelButtonStyle.locked) {
+        activePopupNotifier.value = null;
+        return;
+      }
+      _invokeAction();
+      return;
+    }
+    activePopupNotifier.value = identifier;
+  }
+
+  void _invokeAction() {
+    if (style == LevelButtonStyle.locked) {
+      return;
+    }
+    action?.call();
+    Future.microtask(() => activePopupNotifier.value = null);
   }
 
   ChatBubblePopupStyle _getChatBubbleStyle() {
@@ -94,7 +112,7 @@ class LevelButton extends StatelessWidget {
     return ValueListenableBuilder<String?>(
       valueListenable: activePopupNotifier,
       builder: (context, activePopup, _) {
-        final isPopupVisible = activePopup == level;
+        final isPopupVisible = activePopup == identifier;
 
         return SizedBox(
           width: double.infinity,
@@ -105,41 +123,50 @@ class LevelButton extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: _onTap,
-                child: Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: style.backgroundColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.accent.withValues(alpha: 0.30),
-                        offset: const Offset(0, 4),
-                        blurRadius: 0,
+                behavior: HitTestBehavior.translucent,
+                child: SizedBox(
+                  width: 140,
+                  height: 60,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: style.backgroundColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accent.withValues(alpha: 0.30),
+                            offset: const Offset(0, 4),
+                            blurRadius: 0,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child: CustomText(
-                    text: level,
-                    type: CustomTextType.bodyBold,
-                    color: style.textColor,
+                      alignment: Alignment.center,
+                      child: CustomText(
+                        text: level,
+                        type: CustomTextType.bodyBold,
+                        color: style.textColor,
+                      ),
+                    ),
                   ),
                 ),
               ),
-          
+
               // Popup floats outside
               if (isPopupVisible)
                 Positioned(
-                  left: 70, // distance from circle
-                  child: Material(
-                    color: Colors.transparent, // needed for hit-test
+                  left: 96, // distance from circle
+                  child: IgnorePointer(
+                    ignoring: false,
                     child: AnimatedOpacity(
                       opacity: isPopupVisible ? 1 : 0,
                       duration: const Duration(milliseconds: 250),
                       child: AnimatedSlide(
-                        offset:
-                            isPopupVisible ? Offset.zero : const Offset(-0.2, 0),
+                        offset: isPopupVisible
+                            ? Offset.zero
+                            : const Offset(-0.2, 0),
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeOutBack,
                         child: ChatBubblePopup(
@@ -148,9 +175,7 @@ class LevelButton extends StatelessWidget {
                           buttonTitle: style.popupButtonTitle,
                           style: _getChatBubbleStyle(),
                           buttonAction: () {
-                            action?.call();
-                            Future.microtask(
-                                () => activePopupNotifier.value = null);
+                            _invokeAction();
                           },
                         ),
                       ),
@@ -164,4 +189,3 @@ class LevelButton extends StatelessWidget {
     );
   }
 }
-

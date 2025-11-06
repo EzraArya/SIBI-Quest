@@ -80,7 +80,7 @@ class ChatBubblePopup extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(
             24,
             14,
-            14,
+            16,
             14,
           ), // Extra left padding for triangle
           child: Column(
@@ -109,6 +109,11 @@ class ChatBubblePopup extends StatelessWidget {
                 child: ActionButton(
                   label: buttonTitle,
                   type: style.buttonStyle,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  minimumSize: const Size.fromHeight(56),
                   onPressed: buttonAction,
                 ),
               ),

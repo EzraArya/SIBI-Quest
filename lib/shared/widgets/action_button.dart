@@ -58,6 +58,8 @@ class ActionButton extends StatelessWidget {
   final ButtonType type;
   final int width;
   final int height;
+  final EdgeInsetsGeometry? padding;
+  final Size? minimumSize;
 
   const ActionButton({
     super.key,
@@ -66,7 +68,9 @@ class ActionButton extends StatelessWidget {
     this.isLoading = false,
     this.type = ButtonType.primary,
     this.width = 244,
-    this.height = 244
+    this.height = 244,
+    this.padding,
+    this.minimumSize,
   });
 
   @override
@@ -75,7 +79,8 @@ class ActionButton extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: type.background(context),
         foregroundColor: type.foreground(context),
-        padding: type.padding(),
+        padding: padding ?? type.padding(),
+        minimumSize: minimumSize,
       ),
       onPressed: isLoading ? null : onPressed,
       child: isLoading
