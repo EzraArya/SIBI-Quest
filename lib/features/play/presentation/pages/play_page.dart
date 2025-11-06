@@ -212,9 +212,6 @@ class _PlayPageState extends ConsumerState<PlayPage> {
           selectedAnswerIndex = null;
           isDetectingGesture = false;
         });
-        _showSnack(
-          'We couldn\'t detect the gesture clearly. Try retaking the photo.',
-        );
         return;
       }
 
@@ -236,9 +233,6 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         selectedAnswerIndex = 0;
         isDetectingGesture = false;
       });
-      if (!matchesPrompt) {
-        _showSnack('Gesture captured. Submit to check if it matches!');
-      }
     } catch (error, stackTrace) {
       debugPrint('Gesture detection failed: $error\n$stackTrace');
       if (!mounted) return;
@@ -247,9 +241,6 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         selectedAnswerIndex = null;
         isDetectingGesture = false;
       });
-      _showSnack(
-        'Something went wrong while analysing the gesture. Try again.',
-      );
     }
   }
 
@@ -262,7 +253,6 @@ class _PlayPageState extends ConsumerState<PlayPage> {
       if (currentQuestion!.type == QuestionType.performGesture) {
         final detection = _pendingGestureMatch;
         if (detection == null) {
-          _showSnack('Capture your gesture before submitting.');
           return;
         }
         isCorrect = detection;
@@ -304,9 +294,6 @@ class _PlayPageState extends ConsumerState<PlayPage> {
               selectedAnswerIndex = null;
             }
           });
-          if (currentQuestion!.type == QuestionType.performGesture) {
-            _showSnack('Gesture didn\'t match. Try retaking the photo.');
-          }
         }
       }
     }
@@ -581,13 +568,6 @@ class _PlayPageState extends ConsumerState<PlayPage> {
           onImageChanged: _handleGestureImageChanged,
         );
     }
-  }
-
-  void _showSnack(String message) {
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   String? _resolvePromptImage(Question question) {

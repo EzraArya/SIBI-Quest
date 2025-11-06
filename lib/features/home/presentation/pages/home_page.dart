@@ -232,10 +232,7 @@ class _SectionBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppBanner(
-          section: section.displayName,
-          title: section.title,
-        ),
+        AppBanner(section: section.displayName, title: section.title),
         const SizedBox(height: 16),
         if (sortedLevels.isEmpty)
           const CustomText(

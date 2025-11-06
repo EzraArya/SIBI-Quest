@@ -239,7 +239,8 @@ class _LeaderboardEmptyState extends StatelessWidget {
             ),
             SizedBox(height: 8),
             CustomText(
-              text: 'Mainkan beberapa level untuk mulai bersaing dengan teman-temanmu!',
+              text:
+                  'Mainkan beberapa level untuk mulai bersaing dengan teman-temanmu!',
               type: CustomTextType.body,
               color: AppColors.placeholder,
               textAlign: TextAlign.center,

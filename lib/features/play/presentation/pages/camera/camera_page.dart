@@ -102,13 +102,13 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   }
 
   Future<void> _disposeController() async {
-  final controller = _controller;
-  _controller = null;
-  _initFuture = null;
-  try {
-    await controller?.dispose();
-  } catch (_) {}
-}
+    final controller = _controller;
+    _controller = null;
+    _initFuture = null;
+    try {
+      await controller?.dispose();
+    } catch (_) {}
+  }
 
   Future<void> _initializeCamera(CameraDescription description) async {
     await _disposeController();
@@ -326,7 +326,6 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     );
   }
 
-  
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
