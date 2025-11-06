@@ -7,6 +7,7 @@ import 'package:sibi_quest/features/play/data/play_network_service.dart';
 import 'package:sibi_quest/features/play/domain/models/questions.dart';
 import 'package:sibi_quest/features/home/domain/models/level.dart'
     as home_level;
+import 'package:sibi_quest/features/home/presentation/providers/home_providers.dart';
 
 final playFirestoreProvider = Provider<FirebaseFirestore>((ref) {
   return FirebaseFirestore.instance;
@@ -91,6 +92,11 @@ class PlayProgressController extends AsyncNotifier<void> {
         userLevelData: currentProgress,
         unlockedLevel: unlockedLevel,
       );
+
+      // Invalidate home providers to refresh level status
+      ref.invalidate(userLevelDataProvider);
+      ref.invalidate(homeLevelsProvider);
+
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);

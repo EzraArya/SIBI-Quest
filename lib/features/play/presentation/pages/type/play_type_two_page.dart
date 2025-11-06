@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 
@@ -80,25 +81,20 @@ class PlayTypeTwoPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               child: Container(
                 color: AppColors.muted,
-                child: Image.network(
-                  answerOptions[index],
+                child: CachedNetworkImage(
+                  imageUrl: answerOptions[index],
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, _) => Icon(
+                  placeholder: (context, url) => const Center(
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Icon(
                     Icons.broken_image,
                     color: isSelected ? Colors.white : AppColors.secondary,
                   ),
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) {
-                      return child;
-                    }
-                    return const Center(
-                      child: SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    );
-                  },
                 ),
               ),
             ),

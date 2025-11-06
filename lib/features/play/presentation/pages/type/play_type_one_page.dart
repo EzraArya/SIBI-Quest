@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:sibi_quest/shared/utils/image_url_validator.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
@@ -105,32 +106,27 @@ class _PromptImageTile extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-        child: Container(
-          width: 96,
-          height: 96,
-          color: AppColors.muted,
-          child: hasValidUrl
-              ? Image.network(
-                  key: ValueKey(imageUrl),
-                  imageUrl!,
-                  fit: BoxFit.cover,
-                errorBuilder: (context, error, _) => Icon(
+      child: Container(
+        width: 96,
+        height: 96,
+        color: AppColors.muted,
+        child: hasValidUrl
+            ? CachedNetworkImage(
+                key: ValueKey(imageUrl),
+                imageUrl: imageUrl!,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const Center(
+                  child: SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Icon(
                   Icons.broken_image,
                   color: AppColors.secondary,
                   size: 36,
                 ),
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) {
-                    return child;
-                  }
-                  return const Center(
-                    child: SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                },
               )
             : Icon(
                 Icons.image_not_supported_rounded,
