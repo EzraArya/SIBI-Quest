@@ -158,25 +158,24 @@ class LevelButton extends StatelessWidget {
               if (isPopupVisible)
                 Positioned(
                   left: 96, // distance from circle
-                  child: IgnorePointer(
-                    ignoring: false,
+                  child: AbsorbPointer(
+                    absorbing: false,
                     child: AnimatedOpacity(
-                      opacity: isPopupVisible ? 1 : 0,
+                      opacity: 1.0,
                       duration: const Duration(milliseconds: 250),
                       child: AnimatedSlide(
-                        offset: isPopupVisible
-                            ? Offset.zero
-                            : const Offset(-0.2, 0),
+                        offset: Offset.zero,
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeOutBack,
-                        child: ChatBubblePopup(
-                          title: title,
-                          subtitle: _effectiveSubtitle,
-                          buttonTitle: style.popupButtonTitle,
-                          style: _getChatBubbleStyle(),
-                          buttonAction: () {
-                            _invokeAction();
-                          },
+                        child: Material(
+                          color: Colors.transparent,
+                          child: ChatBubblePopup(
+                            title: title,
+                            subtitle: _effectiveSubtitle,
+                            buttonTitle: style.popupButtonTitle,
+                            style: _getChatBubbleStyle(),
+                            buttonAction: _invokeAction,
+                          ),
                         ),
                       ),
                     ),

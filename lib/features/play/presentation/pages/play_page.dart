@@ -74,6 +74,14 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     _initializeClassifier();
   }
 
+  @override
+  void didUpdateWidget(covariant PlayPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.levelId != widget.levelId) {
+      unawaited(_loadGameData());
+    }
+  }
+
   Future<void> _loadGameData() async {
     setState(() {
       questions = [];
