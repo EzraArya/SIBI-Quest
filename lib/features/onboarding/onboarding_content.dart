@@ -14,21 +14,21 @@ class OnboardingPageData {
 
 const onboardingPages = [
   OnboardingPageData(
-    title: 'Welcome to ',
+    title: 'Selamat datang di ',
     highlight: 'SIBI Quest',
-    subtitle: 'Your journey into sign language starts here.',
-    button: 'Continue',
+    subtitle: 'Perjalananmu mempelajari bahasa isyarat dimulai di sini.',
+    button: 'Lanjutkan',
   ),
   OnboardingPageData(
-    title: 'A Place to Learn ',
+    title: 'Tempat belajar ',
     highlight: 'SIBI',
-    subtitle: 'Practice signs, complete challenges, and track your progress.',
-    button: 'Continue',
+    subtitle: 'Berlatih gerakan, selesaikan tantangan, dan pantau progresmu.',
+    button: 'Lanjutkan',
   ),
   OnboardingPageData(
-    title: 'Ready to ',
-    highlight: 'Start?',
-    subtitle: 'Create your account and begin your quest today.',
-    button: 'Get Started',
+    title: 'Siap untuk ',
+    highlight: 'Memulai?',
+    subtitle: 'Buat akunmu dan mulai petualangan hari ini.',
+    button: 'Mulai Sekarang',
   ),
 ];

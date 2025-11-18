@@ -53,7 +53,7 @@ final homeLevelsProvider = FutureProvider<List<domain_level.Level>>((
     final fallbackId = 'level_${raw.number}';
     final progress =
         progressById[raw.id ?? fallbackId] ?? progressById[fallbackId];
-    final status = _mapStatus(progress?.status, raw.number);
+    final status = _mapStatus(progress?.status, raw.number, raw.sectionId);
 
     return domain_level.Level(
       id: raw.id ?? fallbackId,
@@ -70,7 +70,11 @@ final homeLevelsProvider = FutureProvider<List<domain_level.Level>>((
   return levels;
 });
 
-domain_level.LevelStatus _mapStatus(UserLevelStatus? status, int levelNumber) {
+domain_level.LevelStatus _mapStatus(
+  UserLevelStatus? status,
+  int levelNumber,
+  String sectionId,
+) {
   switch (status) {
     case UserLevelStatus.completed:
       return domain_level.LevelStatus.completed;
@@ -79,7 +83,10 @@ domain_level.LevelStatus _mapStatus(UserLevelStatus? status, int levelNumber) {
     case UserLevelStatus.locked:
       return domain_level.LevelStatus.locked;
     case null:
-      return levelNumber == 1
+      // Only the first level of the first section should be available by default
+      final isFirstLevelOfFirstSection =
+          levelNumber == 1 && (sectionId == 'section_1' || sectionId == '1');
+      return isFirstLevelOfFirstSection
           ? domain_level.LevelStatus.available
           : domain_level.LevelStatus.locked;
   }

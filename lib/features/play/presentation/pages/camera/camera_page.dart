@@ -105,10 +105,9 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     final controller = _controller;
     _controller = null;
     _initFuture = null;
-    if (mounted) {
-      setState(() {});
-    }
-    await controller?.dispose();
+    try {
+      await controller?.dispose();
+    } catch (_) {}
   }
 
   Future<void> _initializeCamera(CameraDescription description) async {
@@ -156,7 +155,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: CustomText(
-              text: 'Capture failed: $e',
+              text: 'Gagal mengambil gambar: $e',
               type: CustomTextType.body,
               color: Colors.white,
             ),
@@ -330,7 +329,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    unawaited(_disposeController());
+    _disposeController();
     super.dispose();
   }
 }

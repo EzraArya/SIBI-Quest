@@ -14,7 +14,7 @@ class Section {
   final String title;
   final String description;
 
-  String get displayName => 'Section $number';
+  String get displayName => 'Bagian $number';
 
   Section copyWith({
     String? id,

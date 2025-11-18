@@ -9,7 +9,7 @@ import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/features/home/domain/models/level.dart'
     as home_level;
 import 'package:sibi_quest/features/play/domain/models/questions.dart';
-import 'package:sibi_quest/features/play/domain/services/yolo_service.dart';
+import 'package:sibi_quest/features/play/domain/services/classifier_service.dart';
 import 'package:sibi_quest/features/play/data/static_questions_service.dart';
 import 'package:sibi_quest/features/play/presentation/providers/play_providers.dart';
 import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
@@ -17,6 +17,7 @@ import 'package:sibi_quest/features/play/presentation/pages/type/play_type_one_p
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_two_page.dart';
 import 'package:sibi_quest/features/play/presentation/pages/type/play_type_three_page.dart';
 import 'package:sibi_quest/shared/widgets/answer_feedback_section.dart';
+import 'package:sibi_quest/shared/utils/image_url_validator.dart';
 
 class PlayPage extends ConsumerStatefulWidget {
   final String? levelId;
@@ -28,7 +29,7 @@ class PlayPage extends ConsumerStatefulWidget {
 }
 
 class _PlayPageState extends ConsumerState<PlayPage> {
-  final YoloService _yoloService = YoloService();
+  final ClassifierService _classifierService = ClassifierService();
 
   // Game state
   List<Question> questions = [];
@@ -70,7 +71,15 @@ class _PlayPageState extends ConsumerState<PlayPage> {
   void initState() {
     super.initState();
     unawaited(_loadGameData());
-    _initializeYolo();
+    _initializeClassifier();
+  }
+
+  @override
+  void didUpdateWidget(covariant PlayPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.levelId != widget.levelId) {
+      unawaited(_loadGameData());
+    }
   }
 
   Future<void> _loadGameData() async {
@@ -177,11 +186,11 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     });
   }
 
-  Future<void> _initializeYolo() async {
+  Future<void> _initializeClassifier() async {
     try {
-      await _yoloService.init();
+      await _classifierService.init();
     } catch (error, stackTrace) {
-      debugPrint('YOLO initialization error: $error\n$stackTrace');
+      debugPrint('Classifier initialization error: $error\n$stackTrace');
     }
   }
 
@@ -202,7 +211,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     }
 
     try {
-      final result = await _yoloService.predict(imagePath);
+      final result = await _classifierService.predict(imagePath);
       if (!mounted) return;
 
       if (result.isFallback) {
@@ -211,33 +220,27 @@ class _PlayPageState extends ConsumerState<PlayPage> {
           selectedAnswerIndex = null;
           isDetectingGesture = false;
         });
-        _showSnack(
-          'We couldn\'t detect the gesture clearly. Try retaking the photo.',
-        );
         return;
       }
 
-      final rawDetectedLabel = result.gestureLabel.trim();
+      final rawDetectedLabel = result.label.trim();
       final expectedLabel = (currentQuestion?.content.prompt ?? '').trim();
 
       final detectedLabel = rawDetectedLabel.isEmpty
           ? 'Unknown'
           : rawDetectedLabel;
 
-      final matchesPrompt =
-          detectedLabel.isNotEmpty &&
-          expectedLabel.isNotEmpty &&
-          detectedLabel.toUpperCase() == expectedLabel.toUpperCase() &&
-          result.confidence >= 0.3;
+      final matchesPrompt = _isGestureMatch(
+        detectedLabel: detectedLabel,
+        expectedLabel: expectedLabel,
+        confidence: result.confidence,
+      );
 
       setState(() {
         _pendingGestureMatch = matchesPrompt;
         selectedAnswerIndex = 0;
         isDetectingGesture = false;
       });
-      if (!matchesPrompt) {
-        _showSnack('Gesture captured. Submit to check if it matches!');
-      }
     } catch (error, stackTrace) {
       debugPrint('Gesture detection failed: $error\n$stackTrace');
       if (!mounted) return;
@@ -246,9 +249,6 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         selectedAnswerIndex = null;
         isDetectingGesture = false;
       });
-      _showSnack(
-        'Something went wrong while analysing the gesture. Try again.',
-      );
     }
   }
 
@@ -261,7 +261,6 @@ class _PlayPageState extends ConsumerState<PlayPage> {
       if (currentQuestion!.type == QuestionType.performGesture) {
         final detection = _pendingGestureMatch;
         if (detection == null) {
-          _showSnack('Capture your gesture before submitting.');
           return;
         }
         isCorrect = detection;
@@ -274,7 +273,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         isAnswerCorrect = isCorrect;
         isVerified = true;
         if (isCorrect) {
-          score += 50; // Add points for correct answer
+          score += 10; // Add points for correct answer
         }
       });
       if (!isCorrect) {
@@ -303,9 +302,6 @@ class _PlayPageState extends ConsumerState<PlayPage> {
               selectedAnswerIndex = null;
             }
           });
-          if (currentQuestion!.type == QuestionType.performGesture) {
-            _showSnack('Gesture didn\'t match. Try retaking the photo.');
-          }
         }
       }
     }
@@ -346,23 +342,65 @@ class _PlayPageState extends ConsumerState<PlayPage> {
         : AnswerFeedbackState.incorrect;
   }
 
+  /// Check if detected gesture matches expected label.
+  /// Handles special cases: O/0 → O_0, V/2 → V_2
+  bool _isGestureMatch({
+    required String detectedLabel,
+    required String expectedLabel,
+    required double confidence,
+  }) {
+    if (detectedLabel.isEmpty || expectedLabel.isEmpty) {
+      return false;
+    }
+
+    if (confidence < 0.3) {
+      return false;
+    }
+
+    final detected = detectedLabel.toUpperCase().trim();
+    final expected = expectedLabel.toUpperCase().trim();
+
+    // Direct match
+    if (detected == expected) {
+      return true;
+    }
+
+    // Handle O/0 → O_0
+    if ((expected == 'O' || expected == '0') && detected == 'O_0') {
+      return true;
+    }
+    if (expected == 'O_0' && (detected == 'O' || detected == '0')) {
+      return true;
+    }
+
+    // Handle V/2 → V_2
+    if ((expected == 'V' || expected == '2') && detected == 'V_2') {
+      return true;
+    }
+    if (expected == 'V_2' && (detected == 'V' || detected == '2')) {
+      return true;
+    }
+
+    return false;
+  }
+
   String _getButtonText() {
     if (!isVerified) {
-      return 'Submit Answer';
+      return 'Kirim Jawaban';
     } else if (isAnswerCorrect == true) {
       if (currentQuestionIndex < questions.length - 1) {
-        return 'Next Question';
+        return 'Pertanyaan Selanjutnya';
       } else {
-        return 'Finish Game';
+        return 'Selesaikan Permainan';
       }
     } else {
       final remaining = _maxAttempts - attemptsUsed;
       if (remaining > 0) {
-        return 'Try Again';
+        return 'Coba Lagi';
       }
       return currentQuestionIndex < questions.length - 1
-          ? 'Continue'
-          : 'Finish Game';
+          ? 'Lanjutkan'
+          : 'Selesaikan Permainan';
     }
   }
 
@@ -370,10 +408,9 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     if (isVerified && isAnswerCorrect != true) {
       final remaining = _maxAttempts - attemptsUsed;
       if (remaining > 0) {
-        final suffix = remaining == 1 ? '' : 's';
-        return '$remaining attempt$suffix remaining';
+        return '$remaining kesempatan tersisa';
       }
-      return 'No attempts remaining.';
+      return 'Tidak ada kesempatan tersisa.';
     }
     return null;
   }
@@ -387,7 +424,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             CustomText(
-              text: 'Game Settings',
+              text: 'Pengaturan Permainan',
               type: CustomTextType.title,
               color: AppColors.text,
             ),
@@ -395,7 +432,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
             ListTile(
               leading: Icon(Icons.home, color: AppColors.primary),
               title: const CustomText(
-                text: 'Return to Home',
+                text: 'Kembali ke Beranda',
                 type: CustomTextType.body,
               ),
               onTap: () {
@@ -406,7 +443,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
             ListTile(
               leading: Icon(Icons.refresh, color: AppColors.primary),
               title: const CustomText(
-                text: 'Restart Level',
+                text: 'Ulangi Level',
                 type: CustomTextType.body,
               ),
               onTap: () {
@@ -504,7 +541,7 @@ class _PlayPageState extends ConsumerState<PlayPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('We\'ll retry syncing your progress later.'),
+          content: Text('Kami akan mencoba menyinkronkan progresmu nanti.'),
         ),
       );
     }
@@ -513,8 +550,9 @@ class _PlayPageState extends ConsumerState<PlayPage> {
   Widget _buildQuestionContent() {
     switch (currentQuestion!.type) {
       case QuestionType.selectAlphabet:
+        final promptImage = _resolvePromptImage(currentQuestion!);
         return PlayTypeOnePage(
-          promptImage: currentQuestion!.content.prompt,
+          promptImage: promptImage,
           answerOptions: currentQuestion!.content.answers
               .map((a) => a.value)
               .toList(),
@@ -540,11 +578,29 @@ class _PlayPageState extends ConsumerState<PlayPage> {
     }
   }
 
-  void _showSnack(String message) {
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(SnackBar(content: Text(message)));
+  String? _resolvePromptImage(Question question) {
+    final content = question.content;
+    final candidates = <String?>[];
+
+    final exampleImage = content.exampleImage?.trim();
+    if (exampleImage != null && exampleImage.isNotEmpty) {
+      candidates.add(exampleImage);
+    }
+
+    final prompt = content.prompt.trim();
+    if (content.isPromptImage) {
+      candidates.add(prompt);
+    } else if (isValidNetworkImageUrl(prompt)) {
+      candidates.add(prompt);
+    }
+
+    for (final candidate in candidates) {
+      if (isValidNetworkImageUrl(candidate)) {
+        return candidate;
+      }
+    }
+
+    return null;
   }
 }
 

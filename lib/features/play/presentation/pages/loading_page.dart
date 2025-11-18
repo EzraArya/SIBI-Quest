@@ -56,7 +56,7 @@ class _LoadingPageState extends State<LoadingPage> {
             const SizedBox(height: 16),
             // Loading text
             const CustomText(
-              text: "Loading Game!",
+              text: "Memuat permainan...",
               type: CustomTextType.title,
               color: AppColors.text,
             ),

@@ -11,9 +11,7 @@ import 'package:sibi_quest/features/profile/profile_router.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 import 'package:sibi_quest/shared/widgets/action_button.dart';
 import 'package:sibi_quest/shared/widgets/app_alert.dart';
-import 'package:sibi_quest/shared/widgets/app_system_icon.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
-import 'package:sibi_quest/shared/widgets/image_text_box.dart';
 import 'package:sibi_quest/cores/models/user.dart' as core;
 import 'package:sibi_quest/shared/utils/image_url_validator.dart';
 
@@ -69,29 +67,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     _profileListener?.close();
     super.dispose();
   }
-
-  final List<_OverviewItem> _overviewItems = const [
-    _OverviewItem(
-      icon: Icons.stacked_bar_chart_rounded,
-      value: '24',
-      label: 'Lessons Completed',
-    ),
-    _OverviewItem(
-      icon: Icons.emoji_events_rounded,
-      value: '12',
-      label: 'Badges Earned',
-    ),
-    _OverviewItem(
-      icon: Icons.schedule_rounded,
-      value: '48h',
-      label: 'Practice Time',
-    ),
-    _OverviewItem(
-      icon: Icons.favorite_rounded,
-      value: 'Top 5%',
-      label: 'Leaderboard',
-    ),
-  ];
 
   void _navigateToEditProfile() {
     context.pushNamed(ProfileRoutes.editProfileName);
@@ -187,8 +162,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       authUser: user,
                       firestoreUser: profileUser,
                     ),
-                    const SizedBox(height: 24),
-                    _buildOverviewSection(),
                     const SizedBox(height: 24),
                     _buildActionsSection(isAuthProcessing, isProfileProcessing),
                     const SizedBox(height: 32),
@@ -366,30 +339,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     return 'Explorer';
   }
 
-  Widget _buildOverviewSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CustomText(
-            text: 'Overview',
-            type: CustomTextType.bodyBold,
-            color: AppColors.text,
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: _overviewItems
-                .map((item) => _OverviewCard(item: item))
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActionsSection(bool isAuthProcessing, bool isProfileProcessing) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -454,52 +403,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           size: 72,
           color: AppColors.placeholder,
         ),
-      ),
-    );
-  }
-}
-
-class _OverviewItem {
-  final IconData icon;
-  final String value;
-  final String label;
-
-  const _OverviewItem({
-    required this.icon,
-    required this.value,
-    required this.label,
-  });
-}
-
-class _OverviewCard extends StatelessWidget {
-  final _OverviewItem item;
-
-  const _OverviewCard({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 64, maxWidth: 168),
-      child: ImageTextBox(
-        icon: AppSystemIcon(
-          icon: item.icon,
-          width: 24,
-          height: 24,
-          color: AppColors.accent,
-        ),
-        title: item.value,
-        description: item.label,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        spacing: 12,
-        borderColor: AppColors.line.withValues(alpha: 0.5),
-        borderRadius: 16,
-        borderWidth: 1.5,
-        backgroundColor: AppColors.textbox,
-        titleColor: AppColors.text,
-        descriptionColor: AppColors.placeholder,
-        titleType: CustomTextType.bodyBold,
-        descriptionType: CustomTextType.body,
-        descriptionMaxLines: 3,
       ),
     );
   }

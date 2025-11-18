@@ -30,13 +30,19 @@ class PlayTypeThreePage extends StatelessWidget {
         Row(
           children: [
             const CustomText(
-              text: "Perform this",
+              text: "Lakukan",
               type: CustomTextType.title,
               color: AppColors.text,
             ),
             const SizedBox(width: 8),
             const CustomText(
               text: "Gesture",
+              type: CustomTextType.title,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 8),
+            const CustomText(
+              text: "Berikut",
               type: CustomTextType.title,
               color: AppColors.primary,
             ),

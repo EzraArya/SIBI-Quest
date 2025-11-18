@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:sibi_quest/shared/widgets/custom_text.dart';
 import 'package:sibi_quest/shared/tokens/colors.dart';
 
@@ -24,13 +25,19 @@ class PlayTypeTwoPage extends StatelessWidget {
         Row(
           children: const [
             CustomText(
-              text: "Select the correct",
+              text: "Pilih",
               type: CustomTextType.title,
               color: AppColors.text,
             ),
             SizedBox(width: 8),
             CustomText(
               text: "Gesture",
+              type: CustomTextType.title,
+              color: AppColors.primary,
+            ),
+            SizedBox(width: 8),
+            CustomText(
+              text: "Yang Sesuai",
               type: CustomTextType.title,
               color: AppColors.primary,
             ),
@@ -69,9 +76,11 @@ class PlayTypeTwoPage extends StatelessWidget {
             duration: const Duration(milliseconds: 120),
             curve: Curves.easeOut,
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary : AppColors.background,
+              color: isSelected
+                  ? AppColors.complementary
+                  : AppColors.background,
               border: Border.all(
-                color: isSelected ? AppColors.primary : AppColors.line,
+                color: isSelected ? AppColors.complementary : AppColors.line,
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(12),
@@ -80,25 +89,20 @@ class PlayTypeTwoPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               child: Container(
                 color: AppColors.muted,
-                child: Image.network(
-                  answerOptions[index],
+                child: CachedNetworkImage(
+                  imageUrl: answerOptions[index],
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, _) => Icon(
+                  placeholder: (context, url) => const Center(
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Icon(
                     Icons.broken_image,
                     color: isSelected ? Colors.white : AppColors.secondary,
                   ),
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) {
-                      return child;
-                    }
-                    return const Center(
-                      child: SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    );
-                  },
                 ),
               ),
             ),

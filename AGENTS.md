@@ -21,7 +21,7 @@
 - `PlayNetworkService.fetchQuestions` filters `questions` by `levelId`, sorts on `order`, and falls back to `StaticQuestionsService` when Firestore is empty; keep that static fallback (`lib/features/play/data/static_questions_service.dart`) in sync with live question updates.
 - `PlayProgressController.updateProgress` updates `users/{uid}/levelData`, increments `users.totalScore`, and unlocks the next level; reuse it rather than manual writes.
 - `PlayRoutes` (in `lib/features/play/play_router.dart`) define navigation constants; `PlayPage` relies on `_resetQuestionState()` whenever the level changes.
-- `YoloService` is a singleton; call `YoloService().init()` once, tweak behavior via `YoloService(options: ...)`, and `dispose()` it in tests to release interpreters.
+- `ClassifierService` is a singleton; call `ClassifierService().init()` once, tweak behavior via `ClassifierService(options: ...)`, and `dispose()` it in tests to release interpreters.
 
 ## Shared UI & Tokens
 - Typography goes through `CustomText` + `lib/shared/tokens/typography.dart`; avoid ad-hoc `TextStyle`s.
@@ -36,7 +36,7 @@
 
 ## Assets & Build
 - TFLite models + labels live in `assets/models/`; register additions in `pubspec.yaml` under `flutter.assets` or they will be excluded.
-- Camera + YOLO routes depend on permissions declared in `android/app/src/main/AndroidManifest.xml` and `ios/Runner/Info.plist`; keep strings in sync.
+- Camera + classifier routes depend on permissions declared in `android/app/src/main/AndroidManifest.xml` and `ios/Runner/Info.plist`; keep strings in sync.
 - Standard loop: `flutter pub get` → `flutter analyze` → targeted `flutter test test/<suite>.dart` (widget specs reside under `test/features/**`); prefer widget tests that wrap screens in `ProviderScope`/`MaterialApp` and inject mocked providers, as in `test/shared/widgets/app_alert_test.dart`.
 - Run manual checks with `flutter run -d <deviceId>`; routes hitting `PlayRoutes.cameraPath` need a device/emulator with camera access.
 

@@ -17,13 +17,13 @@ class ScorePage extends StatefulWidget {
 class _ScorePageState extends State<ScorePage> {
   String get _getScoreMessage {
     if (widget.score >= 80) {
-      return "Excellent!";
+      return "Luar biasa!";
     } else if (widget.score >= 60) {
-      return "Good Job!";
+      return "Kerja bagus!";
     } else if (widget.score >= 40) {
-      return "Keep Practicing!";
+      return "Terus berlatih, ya!";
     } else {
-      return "Try Again!";
+      return "Coba lagi, yuk!";
     }
   }
 
@@ -82,7 +82,7 @@ class _ScorePageState extends State<ScorePage> {
                 child: Column(
                   children: [
                     const CustomText(
-                      text: "Your Score",
+                      text: "Skormu",
                       type: CustomTextType.body,
                       color: AppColors.text,
                     ),
@@ -105,7 +105,7 @@ class _ScorePageState extends State<ScorePage> {
                   SizedBox(
                     width: double.infinity,
                     child: ActionButton(
-                      label: "Play Again",
+                      label: "Main Lagi",
                       type: ButtonType.primary,
                       onPressed: () {
                         // Navigate back to loading/play screen

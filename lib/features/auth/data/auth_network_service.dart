@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sibi_quest/cores/models/user.dart' as core;
 import 'package:sibi_quest/cores/models/user_level_data.dart';
 
@@ -63,11 +64,60 @@ class AuthNetworkService {
     await batch.commit();
   }
 
-  static List<({String levelId, UserLevelData data})>
-  buildInitialLevelDataSeed() {
-    return List<({String levelId, UserLevelData data})>.unmodifiable(
-      _defaultLevelDataSeed,
-    );
+  /// Builds the initial level data seed for a new user.
+  ///
+  /// Optimized to fetch only the first available level instead of all levels.
+  /// Uses targeted queries to reduce Firestore reads from ~700 to ~2 per sign-up.
+  ///
+  /// Returns a single-item list containing the first level marked as available.
+  /// All other levels will be created lazily as the user progresses.
+  Future<List<({String levelId, UserLevelData data})>>
+  buildInitialLevelDataSeed() async {
+    try {
+      // Fetch ONLY the first section (1 read)
+      final sectionsSnapshot = await _firestore
+          .collection('sections')
+          .orderBy('number')
+          .limit(1)
+          .get();
+
+      if (sectionsSnapshot.docs.isEmpty) {
+        return List.unmodifiable(_defaultLevelDataSeed);
+      }
+
+      final firstSectionId = sectionsSnapshot.docs.first.id;
+
+      // Fetch ONLY the first level of that section (1 read)
+      final levelsSnapshot = await _firestore
+          .collection('levels')
+          .where('sectionId', isEqualTo: firstSectionId)
+          .orderBy('number')
+          .limit(1)
+          .get();
+
+      if (levelsSnapshot.docs.isEmpty) {
+        return List.unmodifiable(_defaultLevelDataSeed);
+      }
+
+      final firstLevelId = levelsSnapshot.docs.first.id;
+
+      // Return only the first level as available
+      // Other levels will be created when unlocked during gameplay
+      return List.unmodifiable([
+        (
+          levelId: firstLevelId,
+          data: UserLevelData(status: UserLevelStatus.available, bestScore: 0),
+        ),
+      ]);
+    } on FirebaseException catch (error) {
+      // Log error for debugging but don't throw
+      // Fallback to default seed ensures sign-up always succeeds
+      debugPrint('Failed to fetch initial level seed: ${error.message}');
+      return List.unmodifiable(_defaultLevelDataSeed);
+    } catch (error) {
+      debugPrint('Unexpected error in buildInitialLevelDataSeed: $error');
+      return List.unmodifiable(_defaultLevelDataSeed);
+    }
   }
 
   static const List<({String levelId, UserLevelData data})>

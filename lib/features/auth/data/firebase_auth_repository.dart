@@ -66,9 +66,12 @@ class FirebaseAuthRepository implements AuthRepository {
           user: seededUser,
         );
 
+        final initialLevelData =
+            await _authNetworkService.buildInitialLevelDataSeed();
+
         await _authNetworkService.createUserLevelDataBatch(
           userId: firebaseUser.uid,
-          levelDataItems: AuthNetworkService.buildInitialLevelDataSeed(),
+          levelDataItems: initialLevelData,
         );
       }
     } on fb.FirebaseAuthException catch (error) {
