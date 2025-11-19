@@ -89,7 +89,7 @@ class ClassifierService {
 
   Interpreter? _interpreter;
   IsolateInterpreter? _isolateInterpreter;
-  GpuDelegateV2? _gpuDelegate;
+  Delegate? _gpuDelegate;
   List<String> _labels = <String>[];
   List<int>? _inputShape;
   ClassifierOptions _options;
@@ -123,6 +123,10 @@ class ClassifierService {
       completer.complete();
     } catch (error, stackTrace) {
       debugPrint('Classifier init failed: $error\n$stackTrace');
+      // Log specific TFLite error if possible
+      if (error is Exception) {
+        debugPrint('TFLite Exception details: ${error.toString()}');
+      }
       _isInitialized = false;
       if (!completer.isCompleted) {
         completer.completeError(error, stackTrace);
@@ -275,13 +279,18 @@ class ClassifierService {
   Future<void> _createInterpreter() async {
     Interpreter? interpreterForCleanup;
     late final Interpreter interpreterInstance;
-    GpuDelegateV2? gpuDelegate;
+    Delegate? gpuDelegate;
 
     try {
       final options = InterpreterOptions();
       try {
-        gpuDelegate = GpuDelegateV2();
-        options.addDelegate(gpuDelegate);
+        if (Platform.isAndroid) {
+          gpuDelegate = GpuDelegateV2();
+          options.addDelegate(gpuDelegate!);
+        } else if (Platform.isIOS) {
+          gpuDelegate = GpuDelegate();
+          options.addDelegate(gpuDelegate!);
+        }
       } catch (error) {
         debugPrint('GPU delegate unavailable, falling back to CPU: $error');
         gpuDelegate = null;
