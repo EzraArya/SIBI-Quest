@@ -33,8 +33,7 @@ android {
 
     // Prevent compression of TFLite models for proper memory mapping
     aaptOptions {
-        noCompress("tflite")
-        noCompress("txt")
+        noCompress.addAll(listOf("tflite", "txt"))
     }
 
     buildTypes {

@@ -69,55 +69,59 @@ class ChatBubblePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 280),
-      child: CustomPaint(
-        painter: ChatBubblePainter(
-          backgroundColor: style.backgroundColor,
-          outlineColor: style.outlineColor,
-        ),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(
-            24,
-            14,
-            16,
-            14,
-          ), // Extra left padding for triangle
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomText(
-                    text: title,
-                    type: CustomTextType.bodyBold,
-                    color: style.textColor,
-                  ),
-                  const SizedBox(height: 4),
-                  CustomText(
-                    text: subtitle,
-                    type: CustomTextType.body,
-                    color: style.textColor,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              SizedBox(
-                width: double.infinity,
-                child: ActionButton(
-                  label: buttonTitle,
-                  type: style.buttonStyle,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  minimumSize: const Size.fromHeight(56),
-                  onPressed: buttonAction,
+    return GestureDetector(
+      onTap: () {}, // Consume clicks
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 280),
+        child: CustomPaint(
+          painter: ChatBubblePainter(
+            backgroundColor: style.backgroundColor,
+            outlineColor: style.outlineColor,
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(
+              24,
+              14,
+              16,
+              14,
+            ), // Extra left padding for triangle
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomText(
+                      text: title,
+                      type: CustomTextType.bodyBold,
+                      color: style.textColor,
+                    ),
+                    const SizedBox(height: 4),
+                    CustomText(
+                      text: subtitle,
+                      type: CustomTextType.body,
+                      color: style.textColor,
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: ActionButton(
+                    label: buttonTitle,
+                    type: style.buttonStyle,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    minimumSize: const Size.fromHeight(56),
+                    onPressed: buttonAction,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

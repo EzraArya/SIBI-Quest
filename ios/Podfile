@@ -48,6 +48,9 @@ post_install do |installer|
       
       # Optimize for Metal (iOS GPU acceleration for TFLite)
       config.build_settings['MTL_ENABLE_DEBUG_INFO'] = 'NO'
+
+      # Prevent stripping of TFLite symbols
+      config.build_settings['STRIP_STYLE'] = 'non-global'
     end
   end
 end
