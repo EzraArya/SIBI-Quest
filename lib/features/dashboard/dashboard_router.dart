@@ -13,14 +13,23 @@ class DashboardRoutes {
   static List<RouteBase> routes() => [
     ShellRoute(
       routes: [
-        GoRoute(path: homePath, builder: (context, state) => const HomePage()),
+        GoRoute(
+          path: homePath,
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: HomePage(),
+          ),
+        ),
         GoRoute(
           path: leaderboardPath,
-          builder: (context, state) => const LeaderboardPage(),
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: LeaderboardPage(),
+          ),
         ),
         GoRoute(
           path: profilePath,
-          builder: (context, state) => const ProfilePage(),
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: ProfilePage(),
+          ),
         ),
       ],
       builder: (context, state, child) {
