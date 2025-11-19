@@ -52,7 +52,7 @@ enum LevelButtonStyle {
   }
 }
 
-class LevelButton extends StatelessWidget {
+class LevelButton extends StatefulWidget {
   final String level;
   final String identifier;
   final LevelButtonStyle style;
@@ -72,32 +72,84 @@ class LevelButton extends StatelessWidget {
     this.action,
   }) : identifier = identifier ?? level;
 
-  String get _effectiveSubtitle =>
-      style == LevelButtonStyle.defaultStyle ? subtitle : style.popupSubtitle;
+  @override
+  State<LevelButton> createState() => _LevelButtonState();
+}
+
+class _LevelButtonState extends State<LevelButton> {
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+
+  String get _effectiveSubtitle => widget.style == LevelButtonStyle.defaultStyle
+      ? widget.subtitle
+      : widget.style.popupSubtitle;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.activePopupNotifier.addListener(_handlePopupChange);
+  }
+
+  @override
+  void didUpdateWidget(LevelButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.activePopupNotifier != oldWidget.activePopupNotifier) {
+      oldWidget.activePopupNotifier.removeListener(_handlePopupChange);
+      widget.activePopupNotifier.addListener(_handlePopupChange);
+    }
+    // If the widget updates while overlay is open, we might want to rebuild the overlay
+    if (_overlayEntry != null) {
+      _overlayEntry!.markNeedsBuild();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.activePopupNotifier.removeListener(_handlePopupChange);
+    _removeOverlay();
+    super.dispose();
+  }
+
+  void _handlePopupChange() {
+    final isActive = widget.activePopupNotifier.value == widget.identifier;
+    if (isActive && _overlayEntry == null) {
+      _showOverlay();
+    } else if (!isActive && _overlayEntry != null) {
+      _removeOverlay();
+    }
+  }
+
+  void _showOverlay() {
+    _overlayEntry = _createOverlayEntry();
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
 
   void _onTap() {
-    final isActive = activePopupNotifier.value == identifier;
+    final isActive = widget.activePopupNotifier.value == widget.identifier;
     if (isActive) {
-      if (style == LevelButtonStyle.locked) {
-        activePopupNotifier.value = null;
-        return;
-      }
-      _invokeAction();
+      // If active, just close it (toggle behavior)
+      widget.activePopupNotifier.value = null;
       return;
     }
-    activePopupNotifier.value = identifier;
+    // If not active, open it
+    widget.activePopupNotifier.value = widget.identifier;
   }
 
   void _invokeAction() {
-    if (style == LevelButtonStyle.locked) {
+    if (widget.style == LevelButtonStyle.locked) {
       return;
     }
-    action?.call();
-    Future.microtask(() => activePopupNotifier.value = null);
+    widget.action?.call();
+    Future.microtask(() => widget.activePopupNotifier.value = null);
   }
 
   ChatBubblePopupStyle _getChatBubbleStyle() {
-    switch (style) {
+    switch (widget.style) {
       case LevelButtonStyle.locked:
         return ChatBubblePopupStyle.inactive;
       case LevelButtonStyle.completed:
@@ -107,84 +159,74 @@ class LevelButton extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<String?>(
-      valueListenable: activePopupNotifier,
-      builder: (context, activePopup, _) {
-        final isPopupVisible = activePopup == identifier;
-
-        return SizedBox(
-          width: double.infinity,
-          height: 60,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.centerLeft,
-            children: [
-              GestureDetector(
-                onTap: _onTap,
-                behavior: HitTestBehavior.translucent,
-                child: SizedBox(
-                  width: 140,
-                  height: 60,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: style.backgroundColor,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.accent.withValues(alpha: 0.30),
-                            offset: const Offset(0, 4),
-                            blurRadius: 0,
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: CustomText(
-                        text: level,
-                        type: CustomTextType.bodyBold,
-                        color: style.textColor,
-                      ),
-                    ),
-                  ),
-                ),
+  OverlayEntry _createOverlayEntry() {
+    return OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          width: 280, // Max width constraint from original
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            targetAnchor: Alignment.centerLeft,
+            followerAnchor: Alignment.centerLeft,
+            offset: const Offset(96, 0),
+            showWhenUnlinked: false,
+            child: Material(
+              color: Colors.transparent,
+              child: ChatBubblePopup(
+                title: widget.title,
+                subtitle: _effectiveSubtitle,
+                buttonTitle: widget.style.popupButtonTitle,
+                style: _getChatBubbleStyle(),
+                buttonAction: _invokeAction,
               ),
-
-              // Popup floats outside
-              if (isPopupVisible)
-                Positioned(
-                  left: 96, // distance from circle
-                  child: AbsorbPointer(
-                    absorbing: false,
-                    child: AnimatedOpacity(
-                      opacity: 1.0,
-                      duration: const Duration(milliseconds: 250),
-                      child: AnimatedSlide(
-                        offset: Offset.zero,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOutBack,
-                        child: Material(
-                          color: Colors.transparent,
-                          child: ChatBubblePopup(
-                            title: title,
-                            subtitle: _effectiveSubtitle,
-                            buttonTitle: style.popupButtonTitle,
-                            style: _getChatBubbleStyle(),
-                            buttonAction: _invokeAction,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: SizedBox(
+        width: double.infinity,
+        height: 60,
+        child: GestureDetector(
+          onTap: _onTap,
+          behavior: HitTestBehavior.translucent,
+          child: Container(
+            width: 140,
+            height: 60,
+            color: Colors.transparent,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: widget.style.backgroundColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accent.withValues(alpha: 0.30),
+                      offset: const Offset(0, 4),
+                      blurRadius: 0,
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: CustomText(
+                  text: widget.level,
+                  type: CustomTextType.bodyBold,
+                  color: widget.style.textColor,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
