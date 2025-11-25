@@ -201,7 +201,8 @@ class ClassifierService {
     final outputs = _allocateOutputTensors();
     final start = DateTime.now();
     try {
-      _interpreter!.run(processedInputData, outputs.map);
+      // Synchronous run() expects output buffer directly, not a map
+      _interpreter!.run(processedInputData, outputs.data[0]);
     } catch (error, stackTrace) {
       debugPrint('Classifier inference failed: $error\n$stackTrace');
       return ClassificationResult.fallback();
