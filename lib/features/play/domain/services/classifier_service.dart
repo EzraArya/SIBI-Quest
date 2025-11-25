@@ -88,7 +88,6 @@ class ClassifierService {
   static const _labelsAssetPath = 'assets/models/labels.txt';
 
   Interpreter? _interpreter;
-  IsolateInterpreter? _isolateInterpreter;
   Delegate? _gpuDelegate;
   List<String> _labels = <String>[];
   List<int>? _inputShape;
@@ -169,7 +168,7 @@ class ClassifierService {
       return ClassificationResult.fallback();
     }
 
-    if (!_isInitialized || _interpreter == null || _isolateInterpreter == null) {
+    if (!_isInitialized || _interpreter == null) {
       return ClassificationResult.fallback();
     }
 
@@ -202,10 +201,7 @@ class ClassifierService {
     final outputs = _allocateOutputTensors();
     final start = DateTime.now();
     try {
-      await _isolateInterpreter!.runForMultipleInputs(
-        <Object>[processedInputData],
-        outputs.map,
-      );
+      _interpreter!.run(processedInputData, outputs.map);
     } catch (error, stackTrace) {
       debugPrint('Classifier inference failed: $error\n$stackTrace');
       return ClassificationResult.fallback();
@@ -243,12 +239,6 @@ class ClassifierService {
   }
 
   Future<void> dispose() async {
-    try {
-      await _isolateInterpreter?.close();
-    } catch (error) {
-      debugPrint('Classifier isolate close error: $error');
-    }
-    _isolateInterpreter = null;
 
     try {
       _interpreter?.close();
@@ -323,14 +313,11 @@ class ClassifierService {
     }
 
     _interpreter = interpreterInstance;
-    _inputShape = interpreterInstance.getInputTensor(0).shape;
-    _isolateInterpreter = await IsolateInterpreter.create(
-      address: interpreterInstance.address,
-    );
-  }
+  _inputShape = interpreterInstance.getInputTensor(0).shape;
+}
 
   Future<void> _performWarmUp() async {
-    final interpreter = _isolateInterpreter;
+    final interpreter = _interpreter;
     final inputShape = _inputShape;
     if (interpreter == null || inputShape == null) {
       return;
@@ -339,7 +326,7 @@ class ClassifierService {
     try {
       final zeroInput = _createEmptyTensor(inputShape);
       final outputs = _allocateOutputTensors();
-      await interpreter.runForMultipleInputs(<Object>[zeroInput], outputs.map);
+      interpreter.run(zeroInput, outputs.map);
     } catch (error) {
       debugPrint('Classifier warm-up failed: $error');
     }
