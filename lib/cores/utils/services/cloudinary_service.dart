@@ -19,6 +19,7 @@ class CloudinaryService {
 
   static const String _cloudinaryHost = 'https://api.cloudinary.com/v1_1';
   static const String _defaultFolder = 'profiles';
+  static const String _uploadPreset = 'profile_picture';
 
   /// Uploads a profile image to Cloudinary and returns the secure URL.
   ///
@@ -56,6 +57,7 @@ class CloudinaryService {
     if (config.apiKey.isNotEmpty) {
       request.fields['api_key'] = config.apiKey;
     }
+    request.fields['upload_preset'] = _uploadPreset;
 
     final streamedResponse = await _client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
