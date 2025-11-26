@@ -74,12 +74,7 @@ class ProfileNetworkService {
       throw const ProfileNetworkException.notAuthenticated();
     }
 
-    try {
-      await currentUser.delete();
-    } on firebase_auth.FirebaseAuthException catch (error) {
-      throw ProfileNetworkException.accountDeletionFailed(error.message);
-    }
-
+    // Delete Firestore data FIRST while user is still authenticated
     final userDoc = _usersCollection.doc(userId);
     final levelDataSnapshot = await userDoc.collection('levelData').get();
     final batch = _firestore.batch();
@@ -90,6 +85,13 @@ class ProfileNetworkService {
 
     batch.delete(userDoc);
     await batch.commit();
+
+    // Delete Firebase Auth user LAST
+    try {
+      await currentUser.delete();
+    } on firebase_auth.FirebaseAuthException catch (error) {
+      throw ProfileNetworkException.accountDeletionFailed(error.message);
+    }
   }
 
   /// Releases any resources held by the underlying services.
