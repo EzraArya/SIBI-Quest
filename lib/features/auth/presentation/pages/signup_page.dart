@@ -10,6 +10,7 @@ import 'package:sibi_quest/features/auth/auth_router.dart';
 import 'package:sibi_quest/features/auth/domain/auth_failure.dart';
 import 'package:sibi_quest/features/auth/presentation/providers/auth_providers.dart';
 import 'package:sibi_quest/features/dashboard/dashboard_router.dart';
+import 'package:sibi_quest/features/home/presentation/providers/home_providers.dart';
 import 'package:sibi_quest/features/onboarding/onboarding_router.dart';
 import 'package:sibi_quest/cores/models/user.dart' as core;
 
@@ -63,6 +64,12 @@ class _SignupPageState extends ConsumerState<SignupPage> {
         data: (_) {
           final wasLoading = previous?.isLoading ?? false;
           if (wasLoading) {
+            // Invalidate level data providers to ensure fresh data is fetched
+            // This fixes the race condition where level data isn't available
+            // immediately after signup
+            ref.invalidate(userLevelDataProvider);
+            ref.invalidate(homeLevelsProvider);
+            
             context.go(DashboardRoutes.homePath);
           }
         },
