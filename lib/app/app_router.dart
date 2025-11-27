@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sibi_quest/features/auth/auth_router.dart';
 import 'package:sibi_quest/features/dashboard/dashboard_router.dart';
@@ -21,15 +20,29 @@ final appRouter = GoRouter(
   redirect: (context, state) {
     final location = state.uri.path;
     final bool isAuthenticated = _firebaseAuth.currentUser != null;
-    final bool isAuthRoute = _authRoutes.contains(location);
     final bool isOnboardingRoute = _onboardingRoutes.contains(location);
 
     if (!isAuthenticated && _requiresAuth(location)) {
       return AuthRoutes.loginPath;
     }
 
-    if (isAuthenticated && (isAuthRoute || isOnboardingRoute)) {
-      return DashboardRoutes.homePath;
+    // Auto-redirect authenticated users from onboarding or login routes
+    // But NOT from signup or auth loading - those control their own navigation
+    if (isAuthenticated) {
+      // Allow signup page to control its own navigation
+      if (location == AuthRoutes.signupPath) {
+        return null;
+      }
+      
+      // Allow auth loading page for authenticated users
+      if (location == AuthRoutes.authLoadingPath) {
+        return null;
+      }
+      
+      // Redirect from login and onboarding routes
+      if (location == AuthRoutes.loginPath || isOnboardingRoute) {
+        return DashboardRoutes.homePath;
+      }
     }
 
     return null;
@@ -43,7 +56,11 @@ final appRouter = GoRouter(
   ],
 );
 
-const Set<String> _authRoutes = {AuthRoutes.loginPath, AuthRoutes.signupPath};
+const Set<String> _authRoutes = {
+  AuthRoutes.loginPath,
+  AuthRoutes.signupPath,
+  AuthRoutes.authLoadingPath,
+};
 
 const Set<String> _onboardingRoutes = {
   OnboardingRoutes.welcomePath,
