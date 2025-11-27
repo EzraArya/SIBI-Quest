@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sibi_quest/features/auth/auth_router.dart';
 import 'package:sibi_quest/features/dashboard/dashboard_router.dart';
@@ -56,11 +57,6 @@ final appRouter = GoRouter(
   ],
 );
 
-const Set<String> _authRoutes = {
-  AuthRoutes.loginPath,
-  AuthRoutes.signupPath,
-  AuthRoutes.authLoadingPath,
-};
 
 const Set<String> _onboardingRoutes = {
   OnboardingRoutes.welcomePath,

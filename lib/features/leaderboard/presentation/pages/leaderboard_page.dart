@@ -17,17 +17,26 @@ class LeaderboardPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: leaderboardAsync.when(
-          data: (players) {
-            if (players.isEmpty) {
-              return const _LeaderboardEmptyState();
-            }
-            return _LeaderboardContent(players: players);
-          },
-          loading: () => const _LeaderboardLoadingSkeleton(),
-          error: (error, _) => _LeaderboardError(
-            onRetry: () => ref.invalidate(leaderboardProvider),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          // Invalidate the provider to trigger a refresh
+          ref.invalidate(leaderboardProvider);
+          // Wait for the new data to load
+          await ref.read(leaderboardProvider.future);
+        },
+        color: AppColors.primary,
+        child: SafeArea(
+          child: leaderboardAsync.when(
+            data: (players) {
+              if (players.isEmpty) {
+                return const _LeaderboardEmptyState();
+              }
+              return _LeaderboardContent(players: players);
+            },
+            loading: () => const _LeaderboardLoadingSkeleton(),
+            error: (error, _) => _LeaderboardError(
+              onRetry: () => ref.invalidate(leaderboardProvider),
+            ),
           ),
         ),
       ),
@@ -117,20 +126,53 @@ class _LeaderboardContent extends StatelessWidget {
                         ],
                       ),
                     ),
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: AppColors.muted,
-                      backgroundImage: hasValidAvatar
-                          ? NetworkImage(player.imageUrl!)
-                          : null,
-                      child: hasValidAvatar
-                          ? null
-                          : const Icon(
+                    hasValidAvatar
+                        ? ClipOval(
+                            child: Image.network(
+                              player.imageUrl!,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) {
+                                  return child;
+                                }
+                                // Skeleton loader while image is loading
+                                return Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppColors.muted,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppColors.muted,
+                                  ),
+                                  child: const Icon(
+                                    Icons.person,
+                                    size: 20,
+                                    color: AppColors.placeholder,
+                                  ),
+                                );
+                              },
+                            ),
+                          )
+                        : CircleAvatar(
+                            radius: 20,
+                            backgroundColor: AppColors.muted,
+                            child: const Icon(
                               Icons.person,
                               size: 20,
                               color: AppColors.placeholder,
                             ),
-                    ),
+                          ),
                   ],
                 ),
               ),

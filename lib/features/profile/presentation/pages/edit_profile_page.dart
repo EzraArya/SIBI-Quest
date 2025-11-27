@@ -21,6 +21,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
   late final TextEditingController _emailController;
+  late final ProviderSubscription<AsyncValue<core.User?>> _profileListener;
   core.User? _firestoreUser;
   bool _hasSeededFromFirestore = false;
   String? _errorMessage;
@@ -33,7 +34,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     _lastNameController = TextEditingController(text: user?.lastName ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
 
-    ref.listen<AsyncValue<core.User?>>(profileUserStreamProvider, (
+    _profileListener = ref.listenManual<AsyncValue<core.User?>>(profileUserStreamProvider, (
       previous,
       next,
     ) {
@@ -51,6 +52,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   @override
   void dispose() {
+    _profileListener.close();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();

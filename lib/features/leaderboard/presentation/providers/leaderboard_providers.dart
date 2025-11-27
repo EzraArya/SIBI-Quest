@@ -14,7 +14,7 @@ final leaderboardNetworkServiceProvider = Provider<LeaderboardNetworkService>((
   return LeaderboardNetworkService(firestore: firestore);
 });
 
-final leaderboardProvider = FutureProvider<List<LeaderboardPlayer>>((ref) {
+final leaderboardProvider = FutureProvider.autoDispose<List<LeaderboardPlayer>>((ref) {
   final service = ref.watch(leaderboardNetworkServiceProvider);
   return service.fetchTopPlayers();
 });
