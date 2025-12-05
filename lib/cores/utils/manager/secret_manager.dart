@@ -95,6 +95,7 @@ class SecretManager {
     final cloudName = readSecret('CLOUDINARY_CLOUD_NAME');
     final apiKey = readSecret('CLOUDINARY_API_KEY');
     final apiSecret = readSecret('CLOUDINARY_API_SECRET');
+    final uploadPreset = readSecret('CLOUDINARY_UPLOAD_PRESET');
 
     if ([cloudName, apiKey].any((value) => value == null)) {
       throw const SecretManagerException.missingSecrets();
@@ -104,6 +105,7 @@ class SecretManager {
       cloudName: cloudName!,
       apiKey: apiKey!,
       apiSecret: apiSecret,
+      uploadPreset: uploadPreset ?? 'profile_picture', // Default to match Swift
     );
 
     _cachedConfig = config;
@@ -139,11 +141,13 @@ class CloudinaryConfig {
     required this.cloudName,
     required this.apiKey,
     this.apiSecret,
+    required this.uploadPreset,
   });
 
   final String cloudName;
   final String apiKey;
   final String? apiSecret;
+  final String uploadPreset;
 }
 
 /// Domain-specific failures thrown by [SecretManager].

@@ -22,7 +22,8 @@ class CloudinaryService {
 
   /// Uploads a profile image to Cloudinary and returns the secure URL.
   ///
-  /// The upload leverages credentials fetched from Doppler. The image [bytes]
+  /// The upload leverages an unsigned preset fetched from Doppler, mirroring
+  /// the Swift implementation's `profile_picture` preset. The image [bytes]
   /// must represent a valid JPEG/PNG payload.
   Future<String> uploadProfileImage({
     required Uint8List bytes,
@@ -38,6 +39,7 @@ class CloudinaryService {
 
     final uri = Uri.parse('$_cloudinaryHost/${config.cloudName}/image/upload');
     final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = config.uploadPreset
       ..fields['folder'] = '$_defaultFolder/$userId'
       ..fields['public_id'] = userId
       ..files.add(
@@ -53,9 +55,8 @@ class CloudinaryService {
       request.fields['context'] = contextValue;
     }
 
-    if (config.apiKey.isNotEmpty) {
-      request.fields['api_key'] = config.apiKey;
-    }
+    // Note: api_key is not needed for unsigned uploads with upload_preset
+    // The preset configuration in Cloudinary dashboard handles authentication
 
     final streamedResponse = await _client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
